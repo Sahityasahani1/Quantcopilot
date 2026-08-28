@@ -1,0 +1,98 @@
+# ==============================================================================
+# QuantCopilot AI - Git Ignore Configuration
+# ==============================================================================
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+node_modules/
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# Python / Virtualenv
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch / ML Cache & Models
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.h5
+*.joblib
+ml_service/__pycache__/
+backend/app/__pycache__/
+backend/app/routers/__pycache__/
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Operating System & IDE
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+# Temporary & Chrome Downloads
+*.crdownload
+*.tmp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database Local Dumps & Logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
