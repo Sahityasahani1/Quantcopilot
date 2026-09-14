@@ -7,6 +7,13 @@ import redis.asyncio as aioredis
 from app.database import get_pg_pool, get_redis_client
 from app.schemas import PortfolioSummarySchema, PositionSchema, GNNRiskPayloadSchema, GNNRiskNodeSchema
 
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+try:
+    from ml_service.gnn_engine import gnn_engine
+except ImportError:
+    gnn_engine = None
+
 router: APIRouter = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 
 GNN_CACHE_JSON = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml_service", "data_cache", "gnn_correlation_payload.json")

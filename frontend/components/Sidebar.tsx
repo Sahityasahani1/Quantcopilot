@@ -44,20 +44,6 @@ export const Sidebar: React.FC = () => {
           })}
         </nav>
       </div>
-
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3 text-[11px] font-mono text-slate-400 space-y-2">
-        <div className="flex items-center justify-between text-slate-300">
-          <span>Engine Cluster</span>
-          <span className="text-emerald-400 font-semibold">ONLINE</span>
-        </div>
-        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-          <div className="bg-cyan-400 h-full w-[85%] rounded-full" />
-        </div>
-        <div className="flex justify-between text-[9px] text-slate-500">
-          <span>Latency: 12ms</span>
-          <span>GPU: RTX 4090</span>
-        </div>
-      </div>
     </aside>
   );
 };

@@ -138,5 +138,10 @@ def generate_gnn_adjacency_matrix(historical_data: Dict[str, pd.DataFrame]) -> D
     return payload
 
 if __name__ == "__main__":
-    hist_data = fetch_historical_stock_data("1y")
+    import argparse
+    parser = argparse.ArgumentParser(description="Download Historical Data & Generate GNN Payloads")
+    parser.add_argument("--period", type=str, default="3y", help="Lookback period (e.g. 1y, 3y, 5y, max)")
+    args = parser.parse_args()
+
+    hist_data = fetch_historical_stock_data(args.period)
     generate_gnn_adjacency_matrix(hist_data)

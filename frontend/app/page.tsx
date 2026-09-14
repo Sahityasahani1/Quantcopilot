@@ -6,6 +6,7 @@ import { PnLWidget } from "../components/PnLWidget";
 import { RiskHeatmap } from "../components/RiskHeatmap";
 import { IndianMarketWidget } from "../components/IndianMarketWidget";
 import { TradingTerminal } from "../components/fno";
+import { StrategyLab } from "../components/StrategyLab";
 import { AddPositionModal } from "../components/AddPositionModal";
 import { PortfolioImportModal } from "../components/PortfolioImportModal";
 import { ShieldCheck, Zap, Plus, Upload, Trash2, ArrowUpRight, ArrowDownRight } from "lucide-react";
@@ -35,6 +36,14 @@ export default function Home() {
     return (
       <div className="space-y-6 max-w-7xl mx-auto">
         <RiskHeatmap />
+      </div>
+    );
+  }
+
+  if (activeTab === "strategy") {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <StrategyLab />
       </div>
     );
   }

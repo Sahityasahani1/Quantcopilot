@@ -96,3 +96,7 @@ yarn-error.log*
 *.sqlite3
 *.db
 *.log
+
+# Raw External Data Bank Archive
+NSE-Data-bank-main/
+

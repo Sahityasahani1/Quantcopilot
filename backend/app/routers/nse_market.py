@@ -12,6 +12,7 @@ import numpy as np
 import requests
 
 from app.database import get_redis_client, get_pg_pool
+from app.services.yahoo_direct_db import yahoo_db_engine, resolve_yahoo_symbol
 from app.schemas import (
     IndianMarketPayloadSchema, 
     IndianMarketTickerSchema,
@@ -22,7 +23,10 @@ from app.schemas import (
     SecurityMasterSchema,
     SecuritySearchItemSchema,
     SecuritiesCatalogPayloadSchema,
-    MasterSyncResponseSchema
+    MasterSyncResponseSchema,
+    DBSyncStatsSchema,
+    DirectDBSyncResponseSchema,
+    SyncSingleStockResponseSchema
 )
 
 router: APIRouter = APIRouter(prefix="/nse", tags=["Indian Market Feed"])
@@ -36,10 +40,11 @@ HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
-# Expanded Benchmark universe for NSE & BSE
+# Expanded Benchmark universe for NSE & BSE (All Major NIFTY 50, PSUs & Indices)
 DEFAULT_INDIAN_TICKERS = [
     IndianMarketTickerSchema(token="26000", symbol="NIFTY 50", company_name="Nifty 50 Index", sector="Index", exchange="NSE", price=24350.50, prev_close=24052.25, open_price=24100.00, day_high=24410.00, day_low=24210.00, change_24h=1.24, change_pts=298.25, volume_24h=184500200, high_24h=24410.00, low_24h=24210.00, bid=24350.00, ask=24351.00, latency_ms=1.45, type="INDEX", pe_ratio=23.5, market_cap_cr=0, fifty_two_week_high=24900.0, fifty_two_week_low=21700.0, timestamp=int(time.time()*1000)),
     IndianMarketTickerSchema(token="26009", symbol="BANKNIFTY", company_name="Bank Nifty Index", sector="Index", exchange="NSE", price=50820.25, prev_close=50376.90, open_price=50450.00, day_high=51100.00, day_low=50650.00, change_24h=0.88, change_pts=443.35, volume_24h=94200150, high_24h=51100.00, low_24h=50650.00, bid=50819.50, ask=50821.00, latency_ms=1.82, type="INDEX", pe_ratio=16.8, market_cap_cr=0, fifty_two_week_high=53200.0, fifty_two_week_low=44300.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="26037", symbol="FINNIFTY", company_name="Nifty Financial Services Index", sector="Index", exchange="NSE", price=23450.10, prev_close=23280.00, open_price=23300.00, day_high=23520.00, day_low=23250.00, change_24h=0.73, change_pts=170.10, volume_24h=45200000, high_24h=23520.00, low_24h=23250.00, bid=23449.00, ask=23451.00, latency_ms=1.60, type="INDEX", pe_ratio=17.5, market_cap_cr=0, fifty_two_week_high=24100.0, fifty_two_week_low=19800.0, timestamp=int(time.time()*1000)),
     IndianMarketTickerSchema(token="1", symbol="SENSEX", company_name="S&P BSE Sensex Index", sector="Index", exchange="BSE", price=79850.15, prev_close=78981.35, open_price=79100.00, day_high=80120.00, day_low=79540.00, change_24h=1.10, change_pts=868.80, volume_24h=124500000, high_24h=80120.00, low_24h=79540.00, bid=79849.50, ask=79851.00, latency_ms=1.50, type="INDEX", pe_ratio=24.2, market_cap_cr=0, fifty_two_week_high=81500.0, fifty_two_week_low=71200.0, timestamp=int(time.time()*1000)),
     IndianMarketTickerSchema(token="2885", symbol="RELIANCE", company_name="Reliance Industries Ltd", sector="Energy", exchange="NSE", price=2985.40, prev_close=2922.55, open_price=2930.00, day_high=3010.00, day_low=2940.00, change_24h=2.15, change_pts=62.85, volume_24h=14200450, high_24h=3010.00, low_24h=2940.00, bid=2985.00, ask=2985.50, latency_ms=1.12, type="EQUITY", pe_ratio=28.4, market_cap_cr=2018450.0, fifty_two_week_high=3217.9, fifty_two_week_low=2220.3, timestamp=int(time.time()*1000)),
     IndianMarketTickerSchema(token="11536", symbol="TCS", company_name="Tata Consultancy Services", sector="IT Services", exchange="NSE", price=4210.80, prev_close=4229.85, open_price=4235.00, day_high=4260.00, day_low=4190.00, change_24h=-0.45, change_pts=-19.05, volume_24h=6120400, high_24h=4260.00, low_24h=4190.00, bid=4210.50, ask=4211.00, latency_ms=1.35, type="EQUITY", pe_ratio=31.2, market_cap_cr=1524100.0, fifty_two_week_high=4585.9, fifty_two_week_low=3312.0, timestamp=int(time.time()*1000)),
@@ -60,7 +65,16 @@ DEFAULT_INDIAN_TICKERS = [
     IndianMarketTickerSchema(token="3499", symbol="TATASTEEL", company_name="Tata Steel Ltd", sector="Metals", exchange="NSE", price=158.40, prev_close=154.84, open_price=155.00, day_high=162.00, day_low=154.50, change_24h=2.30, change_pts=3.56, volume_24h=34890200, high_24h=162.00, low_24h=154.50, bid=158.35, ask=158.45, latency_ms=1.18, type="EQUITY", pe_ratio=42.1, market_cap_cr=197800.0, fifty_two_week_high=184.6, fifty_two_week_low=114.6, timestamp=int(time.time()*1000)),
     IndianMarketTickerSchema(token="500820", symbol="ASIANPAINT", company_name="Asian Paints Ltd", sector="Paints & Coatings", exchange="NSE", price=3045.50, prev_close=3031.86, open_price=3035.00, day_high=3070.00, day_low=3025.00, change_24h=0.45, change_pts=13.64, volume_24h=2150300, high_24h=3070.00, low_24h=3025.00, bid=3045.00, ask=3046.00, latency_ms=1.42, type="EQUITY", pe_ratio=52.1, market_cap_cr=285400.0, fifty_two_week_high=3380.0, fifty_two_week_low=2685.0, timestamp=int(time.time()*1000)),
     IndianMarketTickerSchema(token="500114", symbol="TITAN", company_name="Titan Company Ltd", sector="Consumer Discretionary", exchange="NSE", price=3450.20, prev_close=3389.19, open_price=3395.00, day_high=3485.00, day_low=3410.00, change_24h=1.80, change_pts=61.01, volume_24h=1890200, high_24h=3485.00, low_24h=3410.00, bid=3450.00, ask=3451.00, latency_ms=1.36, type="EQUITY", pe_ratio=78.4, market_cap_cr=312500.0, fifty_two_week_high=3886.9, fifty_two_week_low=3055.0, timestamp=int(time.time()*1000)),
-    IndianMarketTickerSchema(token="507685", symbol="WIPRO", company_name="Wipro Ltd", sector="IT Services", exchange="NSE", price=542.80, prev_close=546.35, open_price=545.00, day_high=550.00, day_low=538.00, change_24h=-0.65, change_pts=-3.55, volume_24h=8450100, high_24h=550.00, low_24h=538.00, bid=542.50, ask=543.00, latency_ms=1.25, type="EQUITY", pe_ratio=22.8, market_cap_cr=278900.0, fifty_two_week_high=580.0, fifty_two_week_low=375.0, timestamp=int(time.time()*1000))
+    IndianMarketTickerSchema(token="507685", symbol="WIPRO", company_name="Wipro Ltd", sector="IT Services", exchange="NSE", price=542.80, prev_close=546.35, open_price=545.00, day_high=550.00, day_low=538.00, change_24h=-0.65, change_pts=-3.55, volume_24h=8450100, high_24h=550.00, low_24h=538.00, bid=542.50, ask=543.00, latency_ms=1.25, type="EQUITY", pe_ratio=22.8, market_cap_cr=278900.0, fifty_two_week_high=580.0, fifty_two_week_low=375.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="7229", symbol="HCLTECH", company_name="HCL Technologies Ltd", sector="IT Services", exchange="NSE", price=1760.50, prev_close=1742.00, open_price=1748.00, day_high=1775.00, day_low=1740.00, change_24h=1.06, change_pts=18.50, volume_24h=5120000, high_24h=1775.00, low_24h=1740.00, bid=1760.00, ask=1761.00, latency_ms=1.32, type="EQUITY", pe_ratio=28.5, market_cap_cr=492300.0, fifty_two_week_high=1850.0, fifty_two_week_low=1150.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="16669", symbol="BAJAJFINSV", company_name="Bajaj Finserv Ltd", sector="Financial Services", exchange="NSE", price=1840.25, prev_close=1825.10, open_price=1830.00, day_high=1855.00, day_low=1820.00, change_24h=0.83, change_pts=15.15, volume_24h=3120000, high_24h=1855.00, low_24h=1820.00, bid=1840.00, ask=1840.50, latency_ms=1.45, type="EQUITY", pe_ratio=34.2, market_cap_cr=298400.0, fifty_two_week_high=1950.0, fifty_two_week_low=1420.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="11630", symbol="NTPC", company_name="NTPC Ltd", sector="Power & Utilities", exchange="NSE", price=412.30, prev_close=405.80, open_price=408.00, day_high=416.00, day_low=406.00, change_24h=1.60, change_pts=6.50, volume_24h=18500000, high_24h=416.00, low_24h=406.00, bid=412.00, ask=412.50, latency_ms=1.15, type="EQUITY", pe_ratio=18.4, market_cap_cr=389400.0, fifty_two_week_high=440.0, fifty_two_week_low=230.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="2475", symbol="ONGC", company_name="Oil & Natural Gas Corp", sector="Energy", exchange="NSE", price=318.50, prev_close=312.40, open_price=314.00, day_high=322.00, day_low=313.00, change_24h=1.95, change_pts=6.10, volume_24h=24500000, high_24h=322.00, low_24h=313.00, bid=318.40, ask=318.60, latency_ms=1.20, type="EQUITY", pe_ratio=8.9, market_cap_cr=378200.0, fifty_two_week_high=345.0, fifty_two_week_low=170.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="14977", symbol="POWERGRID", company_name="Power Grid Corp of India", sector="Power & Utilities", exchange="NSE", price=334.80, prev_close=330.15, open_price=332.00, day_high=338.00, day_low=331.00, change_24h=1.41, change_pts=4.65, volume_24h=16200000, high_24h=338.00, low_24h=331.00, bid=334.70, ask=334.90, latency_ms=1.28, type="EQUITY", pe_ratio=19.2, market_cap_cr=315600.0, fifty_two_week_high=360.0, fifty_two_week_low=200.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="543320", symbol="ZOMATO", company_name="Zomato Ltd", sector="Internet & Services", exchange="NSE", price=258.40, prev_close=251.20, open_price=253.00, day_high=262.00, day_low=252.00, change_24h=2.87, change_pts=7.20, volume_24h=48500000, high_24h=262.00, low_24h=252.00, bid=258.30, ask=258.50, latency_ms=1.10, type="EQUITY", pe_ratio=110.0, market_cap_cr=234100.0, fifty_two_week_high=280.0, fifty_two_week_low=90.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="543940", symbol="JIOFIN", company_name="Jio Financial Services", sector="Financial Services", exchange="NSE", price=342.10, prev_close=338.50, open_price=340.00, day_high=346.00, day_low=339.00, change_24h=1.06, change_pts=3.60, volume_24h=22500000, high_24h=346.00, low_24h=339.00, bid=342.00, ask=342.20, latency_ms=1.15, type="EQUITY", pe_ratio=130.0, market_cap_cr=214500.0, fifty_two_week_high=395.0, fifty_two_week_low=205.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="500049", symbol="BEL", company_name="Bharat Electronics Ltd", sector="Defence & Aerospace", exchange="NSE", price=298.50, prev_close=292.10, open_price=294.00, day_high=302.00, day_low=293.00, change_24h=2.19, change_pts=6.40, volume_24h=18900000, high_24h=302.00, low_24h=293.00, bid=298.40, ask=298.60, latency_ms=1.18, type="EQUITY", pe_ratio=48.2, market_cap_cr=218900.0, fifty_two_week_high=340.0, fifty_two_week_low=130.0, timestamp=int(time.time()*1000)),
+    IndianMarketTickerSchema(token="541154", symbol="HAL", company_name="Hindustan Aeronautics Ltd", sector="Defence & Aerospace", exchange="NSE", price=4780.00, prev_close=4690.00, open_price=4710.00, day_high=4820.00, day_low=4700.00, change_24h=1.92, change_pts=90.00, volume_24h=4200000, high_24h=4820.00, low_24h=4700.00, bid=4779.00, ask=4781.00, latency_ms=1.40, type="EQUITY", pe_ratio=42.5, market_cap_cr=324100.0, fifty_two_week_high=5670.0, fifty_two_week_low=1850.0, timestamp=int(time.time()*1000))
 ]
 
 TICKER_YF_MAP = {
@@ -69,14 +83,14 @@ TICKER_YF_MAP = {
     "HDFCBANK": "HDFCBANK.NS",
     "INFY": "INFY.NS",
     "ICICIBANK": "ICICIBANK.NS",
-    "TATAMOTORS": "TATAMOTORS.NS",
+    "BHARTIARTL": "BHARTIARTL.NS",
     "SBIN": "SBIN.NS",
     "ITC": "ITC.NS",
-    "BHARTIARTL": "BHARTIARTL.NS",
     "LT": "LT.NS",
+    "HINDUNILVR": "HINDUNILVR.NS",
     "AXISBANK": "AXISBANK.NS",
     "KOTAKBANK": "KOTAKBANK.NS",
-    "HINDUNILVR": "HINDUNILVR.NS",
+    "TATAMOTORS": "TATAMOTORS.NS",
     "MARUTI": "MARUTI.NS",
     "SUNPHARMA": "SUNPHARMA.NS",
     "BAJFINANCE": "BAJFINANCE.NS",
@@ -84,10 +98,60 @@ TICKER_YF_MAP = {
     "ASIANPAINT": "ASIANPAINT.NS",
     "TITAN": "TITAN.NS",
     "WIPRO": "WIPRO.NS",
+    "HCLTECH": "HCLTECH.NS",
+    "BAJAJFINSV": "BAJAJFINSV.NS",
+    "NTPC": "NTPC.NS",
+    "ONGC": "ONGC.NS",
+    "POWERGRID": "POWERGRID.NS",
+    "COALINDIA": "COALINDIA.NS",
+    "ADANIENT": "ADANIENT.NS",
+    "ADANIPORTS": "ADANIPORTS.NS",
+    "M&M": "M&M.NS",
+    "NESTLEIND": "NESTLEIND.NS",
+    "ULTRACEMCO": "ULTRACEMCO.NS",
+    "JSWSTEEL": "JSWSTEEL.NS",
+    "GRASIM": "GRASIM.NS",
+    "TECHM": "TECHM.NS",
+    "INDUSINDBK": "INDUSINDBK.NS",
+    "CIPLA": "CIPLA.NS",
+    "DRREDDY": "DRREDDY.NS",
+    "APOLLOHOSP": "APOLLOHOSP.NS",
+    "DIVISLAB": "DIVISLAB.NS",
+    "BRITANNIA": "BRITANNIA.NS",
+    "EICHERMOT": "EICHERMOT.NS",
+    "TATACONSUM": "TATACONSUM.NS",
+    "SBILIFE": "SBILIFE.NS",
+    "HDFCLIFE": "HDFCLIFE.NS",
+    "BPCL": "BPCL.NS",
+    "HEROMOTOCO": "HEROMOTOCO.NS",
+    "HINDALCO": "HINDALCO.NS",
+    "SHREECEM": "SHREECEM.NS",
+    "LTIM": "LTIM.NS",
+    "BAJAJ-AUTO": "BAJAJ-AUTO.NS",
+    "ZOMATO": "ZOMATO.NS",
+    "JIOFIN": "JIOFIN.NS",
+    "BEL": "BEL.NS",
+    "HAL": "HAL.NS",
+    "TRENT": "TRENT.NS",
+    "VEDL": "VEDL.NS",
+    "DLF": "DLF.NS",
+    "IRCTC": "IRCTC.NS",
+    "TATAPOWER": "TATAPOWER.NS",
+    "INDIGO": "INDIGO.NS",
+    "POLYCAB": "POLYCAB.NS",
+    "PIDILITIND": "PIDILITIND.NS",
+    "SIEMENS": "SIEMENS.NS",
+    "DMART": "DMART.NS",
+    "BANKBARODA": "BANKBARODA.NS",
+    "PNB": "PNB.NS",
+    "CANBK": "CANBK.NS",
     "NIFTY 50": "^NSEI",
     "BANKNIFTY": "^NSEBANK",
+    "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
+    "MIDCPNIFTY": "NIFTY_MIDCAP_100.NS",
     "SENSEX": "^BSESN"
 }
+
 
 
 from datetime import datetime, time as dtime, timedelta
@@ -414,19 +478,21 @@ async def get_historical_candles(
     symbol: str,
     exchange: Optional[str] = Query("NSE", description="Exchange: NSE or BSE"),
     period: str = Query("1y", description="Timeframe: 1mo, 3mo, 6mo, 1y, 2y, 5y"),
+    force_refresh: bool = Query(False, description="Force re-fetch from Yahoo Finance into PostgreSQL"),
     pg_pool=Depends(get_pg_pool)
 ) -> HistoricalSeriesPayloadSchema:
     """
     Returns historical daily OHLCV price candles for any Indian stock on NSE or BSE.
-    Queries PostgreSQL historical table first, falls back to live Yahoo Finance with auto-caching.
+    Direct Database Architecture: Queries PostgreSQL historical table first for sub-5ms latency;
+    if missing or stale, automatically triggers direct Yahoo Finance sync into PostgreSQL.
     """
     clean_sym = symbol.replace("-EQ", "").strip().upper()
     ex = exchange.upper() if exchange else "NSE"
     company_name = clean_sym
     candles: List[HistoricalCandleSchema] = []
 
-    # 1. Try DB fetch first
-    if pg_pool is not None:
+    # 1. Direct DB Query First (Sub-5ms response)
+    if pg_pool is not None and not force_refresh:
         try:
             async with pg_pool.acquire() as conn:
                 # Find metadata
@@ -446,7 +512,7 @@ async def get_historical_candles(
                     """,
                     clean_sym, ex
                 )
-                if rows and len(rows) >= 30:
+                if rows and len(rows) >= 20:
                     for r in rows:
                         candles.append(
                             HistoricalCandleSchema(
@@ -464,46 +530,67 @@ async def get_historical_candles(
         except Exception as e:
             logging.warning(f"DB read error for {clean_sym} history: {e}")
 
-    # 2. If not found in DB or empty, fetch via yfinance
+    # 2. If not found in DB or force_refresh requested, use direct Yahoo Finance Engine to sync into PostgreSQL
     if not candles:
-        yf_symbol = TICKER_YF_MAP.get(symbol)
-        if not yf_symbol:
-            if clean_sym in ["NIFTY 50", "^NSEI"]:
-                yf_symbol = "^NSEI"
-            elif clean_sym in ["BANKNIFTY", "^NSEBANK"]:
-                yf_symbol = "^NSEBANK"
-            elif clean_sym in ["SENSEX", "^BSESN"]:
-                yf_symbol = "^BSESN"
-            elif ex == "BSE":
-                yf_symbol = f"{clean_sym}.BO"
-            else:
-                yf_symbol = f"{clean_sym}.NS"
-
         for t in DEFAULT_INDIAN_TICKERS:
             if t.symbol.replace("-EQ", "") == clean_sym:
                 company_name = t.company_name or clean_sym
                 break
 
-        try:
-            df = yf.download(yf_symbol, period=period, interval="1d", progress=False)
-            if df is not None and not df.empty:
-                # Handle MultiIndex if present
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-                df.reset_index(inplace=True)
-                
-                db_records = []
-                for _, row in df.iterrows():
-                    try:
-                        dt_str = str(row["Date"].date()) if hasattr(row["Date"], "date") else str(row["Date"])[:10]
-                        close_p = float(row["Close"] if "Close" in row else row["Adj Close"])
-                        open_p = float(row["Open"]) if "Open" in row else close_p
-                        high_p = float(row["High"]) if "High" in row else close_p
-                        low_p = float(row["Low"]) if "Low" in row else close_p
-                        vol = int(row["Volume"]) if "Volume" in row else 100000
-                        pct = round(((close_p - open_p) / open_p) * 100, 2) if open_p > 0 else 0.0
+        # Trigger direct sync into PostgreSQL
+        sync_res = await yahoo_db_engine.sync_single_stock_to_db(
+            symbol=clean_sym,
+            exchange=ex,
+            period=period,
+            force_full=force_refresh
+        )
+        
+        # Read back freshly persisted candles from PostgreSQL
+        if pg_pool is not None:
+            try:
+                async with pg_pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT date, open_price, high_price, low_price, close_price, volume, pct_change
+                        FROM historical_stock_data
+                        WHERE symbol = $1 AND exchange = $2
+                        ORDER BY date ASC
+                        """,
+                        clean_sym, ex
+                    )
+                    for r in rows:
+                        candles.append(
+                            HistoricalCandleSchema(
+                                symbol=clean_sym,
+                                exchange=ex,
+                                date=str(r["date"]),
+                                open_price=float(r["open_price"]),
+                                high_price=float(r["high_price"]),
+                                low_price=float(r["low_price"]),
+                                close_price=float(r["close_price"]),
+                                volume=int(r["volume"]),
+                                pct_change=float(r["pct_change"])
+                            )
+                        )
+            except Exception as e:
+                logging.warning(f"Error reading back freshly synced DB candles: {e}")
 
-                        c = HistoricalCandleSchema(
+    # 3. In-Memory Yahoo Finance fallback if DB is offline
+    if not candles:
+        df = yahoo_db_engine.fetch_ohlcv_from_yahoo(clean_sym, ex, period=period)
+        if df is not None and not df.empty:
+            for _, row in df.iterrows():
+                try:
+                    dt_str = str(row["Date"].date()) if hasattr(row["Date"], "date") else str(row["Date"])[:10]
+                    close_p = float(row["Close"] if "Close" in row else row["Adj Close"])
+                    open_p = float(row["Open"]) if "Open" in row else close_p
+                    high_p = float(row["High"]) if "High" in row else close_p
+                    low_p = float(row["Low"]) if "Low" in row else close_p
+                    vol = int(row["Volume"]) if "Volume" in row else 100000
+                    pct = round(((close_p - open_p) / open_p) * 100, 2) if open_p > 0 else 0.0
+
+                    candles.append(
+                        HistoricalCandleSchema(
                             symbol=clean_sym,
                             exchange=ex,
                             date=dt_str,
@@ -514,30 +601,11 @@ async def get_historical_candles(
                             volume=vol,
                             pct_change=pct
                         )
-                        candles.append(c)
-                        db_records.append((clean_sym, ex, row["Date"].date() if hasattr(row["Date"], "date") else pd.to_datetime(dt_str).date(), open_p, high_p, low_p, close_p, vol, pct))
-                    except Exception:
-                        continue
+                    )
+                except Exception:
+                    continue
 
-                # Save downloaded data into PostgreSQL in background / non-blocking
-                if pg_pool is not None and db_records:
-                    try:
-                        async with pg_pool.acquire() as conn:
-                            await conn.executemany(
-                                """
-                                INSERT INTO historical_stock_data (symbol, exchange, date, open_price, high_price, low_price, close_price, volume, pct_change)
-                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                                ON CONFLICT (symbol, exchange, date) DO UPDATE 
-                                SET close_price = EXCLUDED.close_price, volume = EXCLUDED.volume, pct_change = EXCLUDED.pct_change
-                                """,
-                                db_records
-                            )
-                    except Exception as e:
-                        logging.warning(f"Could not persist historical candles to DB: {e}")
-        except Exception as e:
-            logging.warning(f"yfinance query failed for {clean_sym} ({yf_symbol}): {e}")
-
-    # 3. Synthetic realistic trend fallback if external API is unreachable
+    # 4. Realistic synthetic fallback if network is completely disconnected
     if not candles:
         base_price = 1000.0
         for t in DEFAULT_INDIAN_TICKERS:
@@ -548,11 +616,11 @@ async def get_historical_candles(
         dates = pd.date_range(end=pd.Timestamp.now(), periods=180, freq="B")
         curr = base_price * 0.8
         for d in dates:
-            change = (pd.Series([np.random.normal(0.0005, 0.015)]).values[0])
+            change = float(pd.Series([np.random.normal(0.0005, 0.015)]).values[0])
             open_p = curr
             close_p = curr * (1 + change)
-            high_p = max(open_p, close_p) * (1 + abs(np.random.normal(0, 0.005)))
-            low_p = min(open_p, close_p) * (1 - abs(np.random.normal(0, 0.005)))
+            high_p = max(open_p, close_p) * (1 + abs(float(np.random.normal(0, 0.005))))
+            low_p = min(open_p, close_p) * (1 - abs(float(np.random.normal(0, 0.005))))
             curr = close_p
             candles.append(
                 HistoricalCandleSchema(
@@ -611,6 +679,58 @@ async def get_nifty_sector_breakdown() -> List[NiftySectorSummarySchema]:
     return summaries
 
 
+@router.get("/db-stats", response_model=DBSyncStatsSchema)
+async def get_database_cache_stats() -> DBSyncStatsSchema:
+    """
+    Returns real-time PostgreSQL database caching statistics and health:
+    Total registered securities, total cached OHLCV candles, date ranges, and top stored instruments.
+    """
+    stats = await yahoo_db_engine.get_db_cache_statistics()
+    return DBSyncStatsSchema(**stats)
+
+
+@router.post("/sync-single/{symbol}", response_model=SyncSingleStockResponseSchema)
+async def sync_single_stock_from_yahoo(
+    symbol: str,
+    exchange: Optional[str] = Query("NSE", description="Exchange: NSE or BSE"),
+    period: str = Query("1y", description="Timeframe: 1mo, 3mo, 6mo, 1y, 2y, 5y"),
+    force_full: bool = Query(False, description="Force full re-download instead of incremental sync")
+) -> SyncSingleStockResponseSchema:
+    """
+    Triggers an immediate incremental or full sync of OHLCV candles directly from Yahoo Finance
+    into the PostgreSQL historical_stock_data table for a specific company ticker.
+    """
+    clean_sym = symbol.replace("-EQ", "").strip().upper()
+    ex = exchange.upper() if exchange else "NSE"
+    
+    result = await yahoo_db_engine.sync_single_stock_to_db(
+        symbol=clean_sym,
+        exchange=ex,
+        period=period,
+        force_full=force_full
+    )
+    return SyncSingleStockResponseSchema(**result)
+
+
+@router.post("/sync-yahoo-db", response_model=DirectDBSyncResponseSchema)
+async def trigger_direct_yahoo_database_sync(
+    exchange: Optional[str] = Query("ALL", description="Exchange filter: ALL, NSE, BSE"),
+    period: str = Query("1y", description="Timeframe: 1mo, 6mo, 1y, 2y"),
+    workers: int = Query(6, ge=1, le=16, description="Parallel worker threads")
+) -> DirectDBSyncResponseSchema:
+    """
+    Directly connects Yahoo Finance to PostgreSQL and triggers parallel batch synchronization
+    of historical OHLCV series for all active securities in securities_master.
+    """
+    ex_filter = None if exchange.upper() == "ALL" else exchange.upper()
+    result = await yahoo_db_engine.batch_sync_all_securities(
+        exchange=ex_filter,
+        period=period,
+        max_workers=workers
+    )
+    return DirectDBSyncResponseSchema(**result)
+
+
 async def _sync_exchange_master_worker(pg_pool):
     """Background task to sync active listed symbols from official NSE EQUITY_L.csv into PostgreSQL."""
     if pg_pool is None:
@@ -661,4 +781,5 @@ async def sync_securities_master(
         bse_count=4500,
         message="Exchange master synchronization task dispatched to background worker."
     )
+
 

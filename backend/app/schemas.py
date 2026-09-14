@@ -26,6 +26,8 @@ class PortfolioSummarySchema(BaseModel):
 class GNNRiskNodeSchema(BaseModel):
     node_id: str
     asset_name: str
+    company_name: Optional[str] = None
+    sector: Optional[str] = None
     risk_score: float
     centrality: float
     systemic_contagion_factor: float
@@ -232,6 +234,133 @@ class GoalPredictionResponseSchema(BaseModel):
     suggestedLotsOrQty: int
     trajectoryPoints: List[PredictionScenarioPointSchema]
     milestones: List[Dict[str, Any]]
+    featureImportance: Optional[List[Dict[str, Any]]] = None
+    neuralTrend: Optional[str] = None
+    neuralConfidence: Optional[float] = None
+
+# ==================== DEEP LEARNING SCHEMAS ====================
+
+class FeatureAttentionItemSchema(BaseModel):
+    feature: str
+    weight: float
+    importancePct: float
+
+class DeepForecastPointSchema(BaseModel):
+    step: int
+    timestamp: str
+    basePrice: float
+    upperConfidence80: float
+    lowerConfidence80: float
+    upperConfidence95: float
+    lowerConfidence95: float
+    bullishPrice: float
+    bearishPrice: float
+    goalPathPrice: float
+
+class DeepForecastResponseSchema(BaseModel):
+    symbol: str
+    currentPrice: float
+    horizonBars: int
+    dominantTrend: str
+    trendConfidence: float
+    expectedDriftPct: float
+    volatilityEnvelopePct: float
+    trajectory: List[DeepForecastPointSchema]
+    featureImportance: List[FeatureAttentionItemSchema]
+    recentTemporalAttention: List[float]
+    timestamp: str
+
+class DRLActionDistributionSchema(BaseModel):
+    action: str
+    probability: float
+    probPct: float
+    qValue: float
+
+class DRLSignalDriverSchema(BaseModel):
+    feature: str
+    importancePct: float
+
+class DRLAgentSignalResponseSchema(BaseModel):
+    symbol: str
+    currentPrice: float
+    recommendedAction: str
+    confidencePct: float
+    stateValue: float
+    policyEntropy: float
+    actionDistribution: List[DRLActionDistributionSchema]
+    topSignalDrivers: List[DRLSignalDriverSchema]
+    timestamp: str
+
+class DRLEquityPointSchema(BaseModel):
+    barIndex: int
+    step: int
+    agentEquity: float
+    benchmarkEquity: float
+    drawdownPct: float
+
+class DRLBacktestRequestSchema(BaseModel):
+    symbol: str = "NIFTY 50"
+    initialCapital: float = 100000.0
+    leverage: float = 1.0
+    timeframe: str = "5m"
+    riskProfile: str = "BALANCED"
+
+class DRLBacktestResponseSchema(BaseModel):
+    symbol: str
+    initialCapital: float
+    finalAgentEquity: float
+    finalBenchmarkEquity: float
+    agentReturnPct: float
+    benchmarkReturnPct: float
+    alphaPct: float
+    sharpeRatio: float
+    sortinoRatio: float
+    maxDrawdownPct: float
+    benchmarkMaxDrawdownPct: float
+    winRatePct: float
+    profitFactor: float
+    totalTrades: int
+    actionDistribution: Dict[str, int]
+    equityCurve: List[DRLEquityPointSchema]
+    riskProfile: str
+    leverage: float
+
+
+class DBSyncStatsSchema(BaseModel):
+    database_connected: bool
+    total_securities_master: Optional[int] = 0
+    nse_securities: Optional[int] = 0
+    bse_securities: Optional[int] = 0
+    total_cached_candles: Optional[int] = 0
+    symbols_with_history: Optional[int] = 0
+    earliest_date: Optional[str] = None
+    latest_date: Optional[str] = None
+    top_cached_instruments: Optional[List[Dict[str, Any]]] = []
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+
+class DirectDBSyncResponseSchema(BaseModel):
+    status: str
+    total_universe_count: int
+    successful_symbols: int
+    failed_symbols: int
+    total_candles_persisted: int
+    period: str
+    elapsed_seconds: float
+
+
+class SyncSingleStockResponseSchema(BaseModel):
+    symbol: str
+    exchange: str
+    status: str
+    synced_candles: Optional[int] = 0
+    total_db_candles: Optional[int] = 0
+    date_range: Optional[str] = None
+    latest_price: Optional[float] = None
+    elapsed_ms: Optional[float] = 0.0
+    error: Optional[str] = None
+
 
 
 

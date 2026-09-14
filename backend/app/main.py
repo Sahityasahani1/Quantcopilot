@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db_pools, close_db_pools, get_pg_pool, get_redis_client
-from app.routers import portfolio, websocket, nse_market, fno
+from app.routers import portfolio, websocket, nse_market, fno, strategy
 from app.schemas import SystemHealthSchema
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(portfolio.router, prefix=settings.API_V1_STR)
 app.include_router(nse_market.router, prefix=settings.API_V1_STR)
 app.include_router(fno.router, prefix=settings.API_V1_STR)
+app.include_router(strategy.router, prefix=settings.API_V1_STR)
 app.include_router(websocket.router)
 
 @app.get("/health", response_model=SystemHealthSchema)
