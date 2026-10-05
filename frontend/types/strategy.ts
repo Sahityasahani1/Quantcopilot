@@ -21,6 +21,10 @@ export interface DRLAgentSignal {
   policyEntropy: number;
   actionDistribution: DRLActionDistribution[];
   topSignalDrivers: DRLSignalDriver[];
+  suggestedStopLoss?: number;
+  suggestedTarget?: number;
+  recommendedQuantity?: number;
+  sizingFactor?: number;
   timestamp: string;
 }
 
@@ -30,6 +34,18 @@ export interface DRLEquityPoint {
   agentEquity: number;
   benchmarkEquity: number;
   drawdownPct: number;
+}
+
+export interface DRLTradeLog {
+  tradeId: number;
+  action: string;
+  entryStep: number;
+  exitStep: number;
+  entryPrice: number;
+  exitPrice: number;
+  returnPct: number;
+  pnl: number;
+  status: string;
 }
 
 export interface DRLBacktestResult {
@@ -54,6 +70,8 @@ export interface DRLBacktestResult {
     HEDGE: number;
   };
   equityCurve: DRLEquityPoint[];
+  simulatedTrades?: DRLTradeLog[];
+  executionLatencyMs?: number;
   riskProfile: "CONSERVATIVE" | "BALANCED" | "AGGRESSIVE";
   leverage: number;
 }

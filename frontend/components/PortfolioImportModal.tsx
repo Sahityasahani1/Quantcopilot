@@ -13,7 +13,6 @@ TCS,50,4120.00,LONG,1
 TATAMOTORS,300,990.00,LONG,1
 SBIN,500,790.00,LONG,1`;
 
-
 export const PortfolioImportModal: React.FC = () => {
   const { isImportModalOpen, setIsImportModalOpen, importPortfolioPositions } = usePortfolioStore();
   const [parsedPositions, setParsedPositions] = useState<PositionInput[]>([]);
@@ -128,26 +127,32 @@ export const PortfolioImportModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-          <h3 className="text-lg font-bold font-mono text-slate-100 flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-amber-400" />
-            IMPORT PORTFOLIO (CSV / EXCEL)
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#111614] border border-white/[0.065] rounded-sm w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-5 text-[#F2F0E8] font-sans animate-fade-in-up">
+        <div className="flex items-center justify-between border-b border-white/[0.065] pb-4">
+          <h3 className="text-sm font-semibold font-sans uppercase tracking-wider text-[#F2F0E8] flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4 text-[#159570]" />
+            <span>Import Portfolio (CSV / Excel)</span>
           </h3>
-          <button onClick={() => { setIsImportModalOpen(false); setParsedPositions([]); setFileName(""); setParseError(""); }} className="p-1.5 bg-slate-800 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors">
-            <X className="h-5 w-5" />
+          <button 
+            onClick={() => { setIsImportModalOpen(false); setParsedPositions([]); setFileName(""); setParseError(""); }} 
+            className="p-1.5 bg-[#0C100F] border border-white/[0.065] rounded-sm text-[#A7ADA8] hover:text-[#F2F0E8] hover:bg-[#161C19] transition-colors"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Download Template */}
-        <div className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg p-3">
-          <div className="text-xs font-mono text-slate-400">
-            <span className="text-slate-200 font-bold">Format Required:</span> symbol, quantity, entry_price, side, leverage
+        <div className="flex items-center justify-between bg-[#0C100F] border border-white/[0.065] rounded-sm p-3">
+          <div className="text-xs font-mono text-[#A7ADA8]">
+            <span className="text-[#F2F0E8] font-semibold font-sans">Format Required:</span> symbol, quantity, entry_price, side, leverage
           </div>
-          <button onClick={downloadSampleCSV} className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold font-mono px-3 py-1.5 rounded-lg transition-colors">
-            <Download className="h-3.5 w-3.5" />
-            Download Sample CSV
+          <button 
+            onClick={downloadSampleCSV} 
+            className="flex items-center gap-1.5 bg-[#161C19] hover:bg-[#1B2420] border border-white/[0.065] text-[#F2F0E8] text-xs font-medium font-sans px-3 py-1.5 rounded-sm transition-colors"
+          >
+            <Download className="h-3.5 w-3.5 text-[#A7ADA8]" />
+            <span>Download Sample CSV</span>
           </button>
         </div>
 
@@ -157,15 +162,17 @@ export const PortfolioImportModal: React.FC = () => {
           onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
           onDragLeave={() => setIsDragOver(false)}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${
-            isDragOver ? "border-amber-500 bg-amber-950/20" : "border-slate-700 hover:border-slate-600 bg-slate-950/50"
+          className={`border border-dashed rounded-sm p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${
+            isDragOver 
+              ? "border-[#159570] bg-[#159570]/10" 
+              : "border-white/[0.08] hover:border-white/[0.15] bg-[#0C100F]"
           }`}
         >
-          <Upload className={`h-10 w-10 mb-3 ${isDragOver ? "text-amber-400" : "text-slate-500"}`} />
-          <p className="text-sm font-mono text-slate-300">
+          <Upload className={`h-8 w-8 mb-2 ${isDragOver ? "text-[#159570]" : "text-[#68716C]"}`} />
+          <p className="text-xs font-sans text-[#F2F0E8] font-medium">
             {fileName || "Drop your portfolio file here or click to browse"}
           </p>
-          <p className="text-[11px] font-mono text-slate-500 mt-1">
+          <p className="text-[11px] font-sans text-[#68716C] mt-1">
             Supports .csv, .xlsx, .xls files
           </p>
           <input
@@ -179,7 +186,7 @@ export const PortfolioImportModal: React.FC = () => {
 
         {/* Parse Error */}
         {parseError && (
-          <div className="flex items-start gap-2 bg-rose-950/30 border border-rose-800/50 rounded-lg p-3 text-xs font-mono text-rose-400">
+          <div className="flex items-start gap-2 bg-[#C45D62]/10 border border-[#C45D62]/25 rounded-sm p-3 text-xs font-sans text-[#C45D62]">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>{parseError}</span>
           </div>
@@ -188,34 +195,34 @@ export const PortfolioImportModal: React.FC = () => {
         {/* Preview Table */}
         {parsedPositions.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <CheckCircle className="h-4 w-4 text-emerald-400" />
-              <span className="text-emerald-400 font-bold">{parsedPositions.length} positions</span>
-              <span className="text-slate-400">parsed successfully from {fileName}</span>
+            <div className="flex items-center gap-2 text-xs font-sans">
+              <CheckCircle className="h-4 w-4 text-[#42A77A]" />
+              <span className="text-[#42A77A] font-semibold">{parsedPositions.length} positions</span>
+              <span className="text-[#A7ADA8]">parsed successfully from {fileName}</span>
             </div>
-            <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-48 overflow-y-auto">
-              <table className="w-full text-left text-xs font-mono">
-                <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800 text-[10px] uppercase">
+            <div className="overflow-x-auto border border-white/[0.065] rounded-sm max-h-48 overflow-y-auto bg-[#0C100F]">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="sticky top-0 bg-[#0C100F] text-[#A7ADA8] border-b border-white/[0.065] text-[10px] uppercase font-semibold">
                   <tr>
                     <th className="py-2 px-3">Symbol</th>
-                    <th className="py-2 px-2">Qty</th>
-                    <th className="py-2 px-2">Entry Price</th>
+                    <th className="py-2 px-2 text-right">Qty</th>
+                    <th className="py-2 px-2 text-right">Entry Price</th>
                     <th className="py-2 px-2">Side</th>
-                    <th className="py-2 px-2">Leverage</th>
+                    <th className="py-2 px-2 text-right">Leverage</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 bg-slate-900/50">
+                <tbody className="divide-y divide-white/[0.04] font-mono tabular-nums">
                   {parsedPositions.map((p, i) => (
-                    <tr key={i} className="hover:bg-slate-800/40">
-                      <td className="py-2 px-3 font-bold text-slate-100">{p.symbol}</td>
-                      <td className="py-2 px-2 text-slate-300">{p.quantity}</td>
-                      <td className="py-2 px-2 text-slate-300">₹{p.entry_price.toLocaleString('en-IN')}</td>
+                    <tr key={i} className="hover:bg-[#161C19]">
+                      <td className="py-2 px-3 font-semibold text-[#F2F0E8]">{p.symbol}</td>
+                      <td className="py-2 px-2 text-right text-[#F2F0E8]">{p.quantity}</td>
+                      <td className="py-2 px-2 text-right text-[#A7ADA8]">₹{p.entry_price.toLocaleString('en-IN')}</td>
                       <td className="py-2 px-2">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${p.side === "LONG" ? "bg-emerald-950 text-emerald-400" : "bg-rose-950 text-rose-400"}`}>
+                        <span className={`px-1.5 py-0.5 rounded-sm text-[10px] font-semibold ${p.side === "LONG" ? "bg-[#159570]/15 text-[#42A77A] border border-[#159570]/30" : "bg-[#C45D62]/10 text-[#C45D62] border border-[#C45D62]/25"}`}>
                           {p.side}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-slate-300">{p.leverage || 1}x</td>
+                      <td className="py-2 px-2 text-right text-[#A7ADA8]">{p.leverage || 1}x</td>
                     </tr>
                   ))}
                 </tbody>
@@ -224,9 +231,9 @@ export const PortfolioImportModal: React.FC = () => {
 
             <button
               onClick={handleImport}
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 rounded-xl font-bold font-mono text-sm hover:from-amber-400 hover:to-emerald-400 transition-all shadow-lg"
+              className="w-full py-2.5 bg-[#159570] hover:bg-[#0E6B50] text-[#F2F0E8] rounded-sm font-medium font-sans text-xs uppercase tracking-wider transition-colors shadow-sm"
             >
-              IMPORT {parsedPositions.length} POSITIONS INTO PORTFOLIO
+              Import {parsedPositions.length} Positions into Portfolio
             </button>
           </div>
         )}

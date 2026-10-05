@@ -85,6 +85,35 @@ export interface RulerData {
   barsCount: number;
 }
 
+export interface PatternPivot {
+  index: number;
+  time: number;
+  price: number;
+  label: string;
+}
+
+export interface DetectedPatternAPI {
+  id: string;
+  pattern_type: 
+    | "PATTERN_DOUBLE_BOTTOM"
+    | "PATTERN_DOUBLE_TOP"
+    | "PATTERN_HEAD_AND_SHOULDERS"
+    | "PATTERN_BULL_FLAG"
+    | "PATTERN_ASCENDING_TRIANGLE";
+  name: string;
+  confidence_pct: number;
+  breakout_type: "BULLISH" | "BEARISH";
+  neckline_price: number;
+  target_price: number;
+  stop_loss_price: number;
+  target_pct: number;
+  stop_loss_pct: number;
+  risk_reward_ratio: number;
+  status: string;
+  pivots: PatternPivot[];
+  description: string;
+}
+
 export interface ChartPatternData {
   id: string;
   type: 
@@ -97,9 +126,18 @@ export interface ChartPatternData {
   points: Point[];
   necklinePrice?: number;
   targetPrice?: number;
+  stopLossPrice?: number;
+  targetPct?: number;
+  stopLossPct?: number;
+  riskRewardRatio?: number;
   breakoutType: "BULLISH" | "BEARISH";
   color: string;
+  confidencePct?: number;
+  status?: string;
+  description?: string;
+  isAiDetected?: boolean;
 }
+
 
 export type ChartDrawingObject = 
   | BrushStroke 
@@ -212,3 +250,120 @@ export interface OrderInput {
   stopLossPrice?: number;
   targetPrice?: number;
 }
+
+export interface FinbertNewsItem {
+  id: string;
+  title: string;
+  publisher: string;
+  published_at: string;
+  url: string;
+  summary: string;
+  sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE";
+  sentiment_score: number;
+  confidence_pct: number;
+  keywords: string[];
+}
+
+export interface FinbertOverallSentiment {
+  overall_score: number;
+  sentiment_label: "BULLISH" | "NEUTRAL" | "BEARISH";
+  confidence_pct: number;
+  bullish_count: number;
+  bearish_count: number;
+  neutral_count: number;
+  bullish_ratio: number;
+  sentiment_trend: "IMPROVING" | "DETERIORATING" | "STABLE";
+}
+
+export interface SebiPolicyItem {
+  circular_no: string;
+  title: string;
+  issuing_authority: string;
+  category: string;
+  issue_date: string;
+  effective_date: string;
+  impact_level: "HIGH" | "MEDIUM" | "LOW";
+  summary: string;
+  affected_sectors: string[];
+  affected_tickers: string[];
+  regulatory_implication: string;
+}
+
+export interface CompanyPolicyImpact {
+  symbol: string;
+  policy_risk_score: number;
+  exposure_level: "HIGH_MONITORING" | "MODERATE" | "LOW_RISK";
+  matching_policies_count: number;
+  status_text: string;
+  active_policies: SebiPolicyItem[];
+}
+
+export interface TickerDataSummary {
+  symbol: string;
+  company_name: string;
+  spot_price: number;
+  day_change: number;
+  day_change_pct: number;
+  day_high: number;
+  day_low: number;
+  high_52w: number;
+  low_52w: number;
+  pe_ratio?: number;
+  market_cap_cr?: number;
+  volume_24h?: number;
+  rsi_14: number;
+  beta?: number;
+  dominant_trend: "BULLISH" | "BEARISH" | "NEUTRAL";
+  executive_summary: string;
+}
+
+export interface FuturePriceForecastPoint {
+  step: number;
+  timestamp: string;
+  base_price: number;
+  bullish_price: number;
+  bearish_price: number;
+  upper_95: number;
+  lower_95: number;
+  upper_80: number;
+  lower_80: number;
+}
+
+export interface FuturePriceForecast {
+  dominant_trend: "BULLISH" | "BEARISH" | "RANGE_BOUND";
+  trend_confidence_pct: number;
+  expected_return_pct: number;
+  horizon_periods: number;
+  current_price: number;
+  target_price: number;
+  trajectories: FuturePriceForecastPoint[];
+  key_drivers: { feature: string; weight: number; importancePct: number }[];
+}
+
+export interface UniverseTickerMatrixRow {
+  symbol: string;
+  company_name: string;
+  spot_price: number;
+  day_change_pct: number;
+  finbert_sentiment: string;
+  finbert_score: number;
+  future_trend: string;
+  future_target: number;
+  expected_return_pct: number;
+  policy_impact_level: string;
+  policy_risk_score: number;
+}
+
+export interface AiScanPayload {
+  symbol: string;
+  company_name: string;
+  timestamp: string;
+  summary: TickerDataSummary;
+  future_price: FuturePriceForecast;
+  finbert_sentiment: FinbertOverallSentiment;
+  news_feed: FinbertNewsItem[];
+  company_policy: CompanyPolicyImpact;
+  all_sebi_policies: SebiPolicyItem[];
+  universe_matrix: UniverseTickerMatrixRow[];
+}
+

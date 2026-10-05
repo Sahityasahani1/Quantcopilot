@@ -5,3 +5,7 @@ export * from "./GoalMatcherDrawer";
 export * from "./GrowwOverviewDrawer";
 export * from "./OrderExecutionModal";
 export * from "./IndicatorsSubPanel";
+export * from "./AiScanDashboard";
+export * from "./AiUniverseAuditView";
+
+

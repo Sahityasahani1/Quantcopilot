@@ -26,7 +26,109 @@ interface ChartDrawingOverlayProps {
   prediction: PredictionPayload | null;
   width: number;
   height: number;
+  onTradePattern?: (side: "BUY" | "SELL", price: number, target: number, stop: number) => void;
 }
+
+export const recomputePatternMetrics = (pat: ChartPatternData, spot: number): ChartPatternData => {
+  const pts = pat.points;
+  if (!pts || pts.length < 2) return pat;
+  const spotPrice = spot > 0 ? spot : 1000;
+
+  let necklinePrice = spotPrice;
+  let targetPrice = spotPrice;
+  let stopLossPrice = spotPrice;
+  let targetPct = 5.0;
+  let stopLossPct = 2.5;
+  let riskRewardRatio = 2.0;
+
+  if (pat.type === "PATTERN_DOUBLE_BOTTOM" && pts.length >= 5) {
+    const p1 = pts[1];
+    const p2 = pts[2];
+    const p3 = pts[3];
+    const p4 = pts[4];
+    const avgTroughY = (p1.y + p3.y) / 2;
+    const neckY = p2.y;
+    const heightPx = Math.max(15, avgTroughY - neckY);
+    if (pts.length >= 6) {
+      pts[5] = { x: p4.x + 40, y: neckY - heightPx };
+    }
+    const moveFrac = (heightPx / 180) * 0.12;
+    necklinePrice = Number(spotPrice.toFixed(2));
+    targetPrice = Number((spotPrice * (1 + Math.max(0.02, moveFrac))).toFixed(2));
+    stopLossPrice = Number((spotPrice * (1 - Math.max(0.01, moveFrac * 0.45))).toFixed(2));
+    targetPct = Number((((targetPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    stopLossPct = Number((((necklinePrice - stopLossPrice) / necklinePrice) * 100).toFixed(2));
+    riskRewardRatio = stopLossPct > 0 ? Number((targetPct / stopLossPct).toFixed(2)) : 2.2;
+  } else if (pat.type === "PATTERN_DOUBLE_TOP" && pts.length >= 5) {
+    const p1 = pts[1];
+    const p2 = pts[2];
+    const p3 = pts[3];
+    const p4 = pts[4];
+    const avgPeakY = (p1.y + p3.y) / 2;
+    const neckY = p2.y;
+    const heightPx = Math.max(15, neckY - avgPeakY);
+    if (pts.length >= 6) {
+      pts[5] = { x: p4.x + 40, y: neckY + heightPx };
+    }
+    const moveFrac = (heightPx / 180) * 0.12;
+    necklinePrice = Number(spotPrice.toFixed(2));
+    targetPrice = Number((spotPrice * (1 - Math.max(0.02, moveFrac))).toFixed(2));
+    stopLossPrice = Number((spotPrice * (1 + Math.max(0.01, moveFrac * 0.45))).toFixed(2));
+    targetPct = Number((((targetPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    stopLossPct = Number((((stopLossPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    riskRewardRatio = stopLossPct > 0 ? Number((Math.abs(targetPct) / stopLossPct).toFixed(2)) : 2.2;
+  } else if (pat.type === "PATTERN_HEAD_AND_SHOULDERS" && pts.length >= 7) {
+    const neckY = (pts[2].y + pts[4].y) / 2;
+    const headY = pts[3].y;
+    const heightPx = Math.max(20, neckY - headY);
+    if (pts.length >= 8) {
+      pts[7] = { x: pts[6].x + 40, y: neckY + heightPx };
+    }
+    const moveFrac = (heightPx / 200) * 0.14;
+    necklinePrice = Number(spotPrice.toFixed(2));
+    targetPrice = Number((spotPrice * (1 - Math.max(0.02, moveFrac))).toFixed(2));
+    stopLossPrice = Number((spotPrice * (1 + Math.max(0.01, moveFrac * 0.4))).toFixed(2));
+    targetPct = Number((((targetPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    stopLossPct = Number((((stopLossPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    riskRewardRatio = stopLossPct > 0 ? Number((Math.abs(targetPct) / stopLossPct).toFixed(2)) : 2.5;
+  } else if (pat.type === "PATTERN_BULL_FLAG" && pts.length >= 5) {
+    const poleH = Math.max(25, pts[0].y - pts[1].y);
+    if (pts.length >= 6) {
+      pts[5] = { x: pts[4].x + 40, y: pts[4].y - poleH };
+    }
+    const moveFrac = (poleH / 180) * 0.15;
+    necklinePrice = Number(spotPrice.toFixed(2));
+    targetPrice = Number((spotPrice * (1 + Math.max(0.02, moveFrac))).toFixed(2));
+    stopLossPrice = Number((spotPrice * (1 - Math.max(0.01, moveFrac * 0.35))).toFixed(2));
+    targetPct = Number((((targetPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    stopLossPct = Number((((necklinePrice - stopLossPrice) / necklinePrice) * 100).toFixed(2));
+    riskRewardRatio = stopLossPct > 0 ? Number((targetPct / stopLossPct).toFixed(2)) : 2.8;
+  } else if (pat.type === "PATTERN_ASCENDING_TRIANGLE" && pts.length >= 6) {
+    const resY = (pts[1].y + pts[3].y + pts[5].y) / 3;
+    const baseH = Math.max(20, pts[0].y - resY);
+    if (pts.length >= 7) {
+      pts[6] = { x: pts[5].x + 40, y: resY - baseH };
+    }
+    const moveFrac = (baseH / 180) * 0.12;
+    necklinePrice = Number(spotPrice.toFixed(2));
+    targetPrice = Number((spotPrice * (1 + Math.max(0.02, moveFrac))).toFixed(2));
+    stopLossPrice = Number((spotPrice * (1 - Math.max(0.01, moveFrac * 0.4))).toFixed(2));
+    targetPct = Number((((targetPrice - necklinePrice) / necklinePrice) * 100).toFixed(2));
+    stopLossPct = Number((((necklinePrice - stopLossPrice) / necklinePrice) * 100).toFixed(2));
+    riskRewardRatio = stopLossPct > 0 ? Number((targetPct / stopLossPct).toFixed(2)) : 2.5;
+  }
+
+  return {
+    ...pat,
+    points: pts,
+    necklinePrice,
+    targetPrice,
+    stopLossPrice,
+    targetPct,
+    stopLossPct,
+    riskRewardRatio
+  };
+};
 
 export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
   activeTool,
@@ -38,7 +140,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
   currentSpotPrice,
   prediction,
   width,
-  height
+  height,
+  onTradePattern
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -47,6 +150,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [draggedPositionId, setDraggedPositionId] = useState<string | null>(null);
   const [dragHandle, setDragHandle] = useState<"ENTRY" | "TARGET" | "STOP_LOSS" | "MOVE" | null>(null);
+  const [draggedPatternVertex, setDraggedPatternVertex] = useState<{ patternId: string; pointIdx: number } | null>(null);
 
   // Redraw canvas on drawings update or size update
   useEffect(() => {
@@ -224,7 +328,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       ];
     }
 
-    const newPattern: ChartPatternData = {
+    const rawPattern: ChartPatternData = {
       id: `pat-${Date.now()}`,
       type: patternType,
       name,
@@ -235,11 +339,27 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       color
     };
 
+    const newPattern = recomputePatternMetrics(rawPattern, currentSpotPrice);
     setDrawings((prev) => [...prev, newPattern]);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const pt = getCanvasCoords(e);
+
+    if (draggedPatternVertex) {
+      setDrawings((prev) =>
+        prev.map((item) => {
+          if (item.id === draggedPatternVertex.patternId && item.type.startsWith("PATTERN_")) {
+            const pat = item as ChartPatternData;
+            const updatedPts = [...pat.points];
+            updatedPts[draggedPatternVertex.pointIdx] = pt;
+            return recomputePatternMetrics({ ...pat, points: updatedPts }, currentSpotPrice);
+          }
+          return item;
+        })
+      );
+      return;
+    }
 
     if (isDrawing) {
       if (activeTool === "BRUSH") {
@@ -251,6 +371,11 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (draggedPatternVertex) {
+      setDraggedPatternVertex(null);
+      return;
+    }
+
     if (!isDrawing) return;
     setIsDrawing(false);
 
@@ -495,7 +620,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
                         fontFamily="monospace"
                         fontWeight="bold"
                       >
-                        {lvl.ratio} (₹{lvl.price}) {lvl.ratio === 0.618 ? "★ GOLDEN" : ""}
+                        {lvl.ratio} (₹{lvl.price}) {lvl.ratio === 0.618 ? "GOLDEN" : ""}
                       </text>
                     </g>
                   );
@@ -584,37 +709,199 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
             const pat = item as ChartPatternData;
             if (pat.points.length < 2) return null;
 
+            const isBullish = pat.breakoutType === "BULLISH";
             const pathD = pat.points.reduce((acc, p, idx) => `${acc} ${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`, "");
+            const lastPt = pat.points[pat.points.length - 1];
+            const penultPt = pat.points[pat.points.length - 2];
+            const neckY = pat.points.length >= 3 ? pat.points[2].y : pat.points[0].y;
+            const minX = Math.min(...pat.points.map(p => p.x));
+            const maxX = Math.max(...pat.points.map(p => p.x));
 
             return (
-              <g key={pat.id}>
-                <path d={pathD} fill="none" stroke={pat.color} strokeWidth="2.5" strokeLinejoin="round" />
-                {pat.points.map((p, idx) => (
-                  <circle key={idx} cx={p.x} cy={p.y} r="4" fill={pat.color} />
-                ))}
-                {/* Target Projection line */}
-                <line
-                  x1={pat.points[pat.points.length - 2].x}
-                  y1={pat.points[pat.points.length - 2].y}
-                  x2={pat.points[pat.points.length - 1].x}
-                  y2={pat.points[pat.points.length - 1].y}
+              <g key={pat.id} className="select-none pointer-events-auto">
+                {/* Semi-transparent pattern polygon fill */}
+                <polygon
+                  points={pat.points.slice(0, pat.points.length - 1).map(p => `${p.x},${p.y}`).join(" ")}
+                  fill={pat.color}
+                  fillOpacity="0.12"
+                />
+
+                {/* Main pattern trendline */}
+                <path
+                  d={pathD}
+                  fill="none"
                   stroke={pat.color}
-                  strokeWidth="2"
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+
+                {/* Breakout Neckline horizontal line */}
+                <line
+                  x1={minX - 25}
+                  y1={neckY}
+                  x2={maxX + 35}
+                  y2={neckY}
+                  stroke="#94a3b8"
+                  strokeWidth="1.5"
                   strokeDasharray="4,4"
+                  strokeOpacity="0.75"
                 />
                 <rect
-                  x={pat.points[0].x - 10}
-                  y={pat.points[0].y - 28}
-                  width={140}
-                  height={22}
-                  fill="#0a0f1d"
-                  stroke={pat.color}
+                  x={minX - 20}
+                  y={neckY - 18}
+                  width={130}
+                  height={16}
+                  fill="#090d16"
+                  stroke="#475569"
                   strokeWidth="1"
-                  rx="4"
+                  rx="3"
                 />
-                <text x={pat.points[0].x - 4} y={pat.points[0].y - 14} fill={pat.color} fontSize="10" fontFamily="monospace" fontWeight="bold">
-                  {pat.name} Breakout
+                <text
+                  x={minX - 14}
+                  y={neckY - 6}
+                  fill="#cbd5e1"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  Neckline: ₹{pat.necklinePrice || currentSpotPrice}
                 </text>
+
+                {/* Target Projection line */}
+                <line
+                  x1={penultPt.x}
+                  y1={penultPt.y}
+                  x2={lastPt.x}
+                  y2={lastPt.y}
+                  stroke={isBullish ? "#10b981" : "#f43f5e"}
+                  strokeWidth="2.5"
+                  strokeDasharray="5,3"
+                />
+
+                {/* Draggable Vertex Points */}
+                {pat.points.map((p, idx) => {
+                  const isTargetPoint = idx === pat.points.length - 1;
+                  const vertexLabels = ["P1", "P2", "Neck", "P3", "Break", "Target"];
+                  const label = vertexLabels[idx] || `P${idx + 1}`;
+
+                  return (
+                    <g
+                      key={idx}
+                      className="cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setDraggedPatternVertex({ patternId: pat.id, pointIdx: idx });
+                      }}
+                    >
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={isTargetPoint ? "7" : "5.5"}
+                        fill="#06090e"
+                        stroke={isTargetPoint ? (isBullish ? "#10b981" : "#f43f5e") : pat.color}
+                        strokeWidth="2.5"
+                      />
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r="2.5"
+                        fill={isTargetPoint ? "#fbbf24" : "#ffffff"}
+                      />
+                      <text
+                        x={p.x}
+                        y={p.y - 9}
+                        fill="#94a3b8"
+                        fontSize="8"
+                        fontFamily="monospace"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {label}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* TARGET & RISK/REWARD HUD CARD */}
+                <g transform={`translate(${lastPt.x + 12}, ${lastPt.y - 32})`}>
+                  <rect
+                    x="-2"
+                    y="-2"
+                    width="194"
+                    height="88"
+                    fill={isBullish ? "rgba(16, 185, 129, 0.15)" : "rgba(244, 63, 94, 0.15)"}
+                    rx="10"
+                  />
+                  <rect
+                    x="0"
+                    y="0"
+                    width="190"
+                    height="84"
+                    fill="#0a0f1d"
+                    stroke={isBullish ? "#10b981" : "#f43f5e"}
+                    strokeWidth="1.5"
+                    rx="8"
+                  />
+                  <text x="10" y="16" fill={pat.color} fontSize="11" fontFamily="monospace" fontWeight="bold">
+                    {pat.name}
+                  </text>
+                  <rect
+                    x="126"
+                    y="6"
+                    width="56"
+                    height="14"
+                    fill={isBullish ? "#064e3b" : "#4c0519"}
+                    stroke={isBullish ? "#10b981" : "#f43f5e"}
+                    strokeWidth="0.8"
+                    rx="3"
+                  />
+                  <text x="129" y="16" fill={isBullish ? "#34d399" : "#fda4af"} fontSize="8" fontFamily="monospace" fontWeight="bold">
+                    {pat.confidencePct ? `${pat.confidencePct}% AI` : pat.breakoutType}
+                  </text>
+
+
+                  <text x="10" y="34" fill={isBullish ? "#34d399" : "#fb7185"} fontSize="11" fontFamily="monospace" fontWeight="extrabold">
+                    TARGET: ₹{pat.targetPrice} ({isBullish ? "+" : ""}{pat.targetPct}%)
+                  </text>
+
+                  <text x="10" y="49" fill="#94a3b8" fontSize="10" fontFamily="monospace">
+                    Stop: ₹{pat.stopLossPrice} | R:R 1:{pat.riskRewardRatio}
+                  </text>
+
+                  <g
+                    className="cursor-pointer hover:opacity-80"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onTradePattern) {
+                        onTradePattern(
+                          isBullish ? "BUY" : "SELL",
+                          pat.necklinePrice || currentSpotPrice,
+                          pat.targetPrice || currentSpotPrice * 1.05,
+                          pat.stopLossPrice || currentSpotPrice * 0.98
+                        );
+                      }
+                    }}
+                  >
+                    <rect x="10" y="58" width="115" height="18" fill={isBullish ? "#059669" : "#e11d48"} rx="4" />
+                    <text x="15" y="70" fill="#ffffff" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                      TRADE TARGET
+                    </text>
+                  </g>
+
+                  <g
+                    className="cursor-pointer hover:opacity-80"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDrawings((prev) => prev.filter((d) => d.id !== pat.id));
+                    }}
+                  >
+                    <rect x="132" y="58" width="48" height="18" fill="#1e293b" stroke="#334155" rx="4" />
+                    <text x="139" y="70" fill="#94a3b8" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                      REMOVE
+                    </text>
+                  </g>
+                </g>
               </g>
             );
           }
@@ -669,7 +956,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
               <g transform={`translate(${width - 320 + (prediction.trajectoryPoints.length - 1) * 32}, ${height * 0.5 - (prediction.targetPrice - prediction.currentPrice) * 1.8 - 30})`}>
                 <rect x="-10" y="-10" width="130" height="34" fill="#0f172a" stroke="#f59e0b" strokeWidth="1.5" rx="6" />
                 <text x="55" y="6" fill="#fbbf24" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
-                  ★ GOAL TARGET: ₹{prediction.targetPrice}
+                  GOAL TARGET: ₹{prediction.targetPrice}
                 </text>
                 <text x="55" y="18" fill="#34d399" fontSize="9" fontFamily="monospace" textAnchor="middle">
                   Feasibility: {prediction.feasibilityScore}%
