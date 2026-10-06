@@ -6,11 +6,14 @@ from app.config import settings
 from app.database import init_db_pools, close_db_pools, get_pg_pool, get_redis_client
 from app.routers import portfolio, websocket, nse_market, fno, strategy
 from app.schemas import SystemHealthSchema
+from app.services.news_scheduler import news_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db_pools()
+    await news_scheduler.start()
     yield
+    await news_scheduler.stop()
     await close_db_pools()
 
 app: FastAPI = FastAPI(

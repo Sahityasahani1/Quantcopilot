@@ -30,6 +30,8 @@ YF_INDEX_MAP = {
     "MIDCPNIFTY": "NIFTY_MIDCAP_100.NS",
     "SENSEX": "^BSESN",
     "^BSESN": "^BSESN",
+    "TATAMOTORS": "TMPV.NS",
+    "ZOMATO": "ETERNAL.NS",
 }
 
 def resolve_yahoo_symbol(symbol: str, exchange: str = "NSE") -> str:

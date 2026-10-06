@@ -636,6 +636,41 @@ async def get_historical_candles(
                 )
             )
 
+    # Update or append today's candle based on live market quote
+    if candles:
+        try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            from app.routers.websocket import BASE_PRICES, manager
+            live_info = manager.live_state.get(clean_sym) or manager.live_state.get(clean_sym.replace("-EQ", ""))
+            if not live_info and clean_sym in BASE_PRICES:
+                live_info = BASE_PRICES[clean_sym]
+            
+            if live_info:
+                curr_price = float(live_info["price"])
+                curr_high = float(live_info.get("day_high", curr_price))
+                curr_low = float(live_info.get("day_low", curr_price))
+                curr_vol = int(live_info.get("volume_24h", 250000))
+                
+                if candles[-1].date < today_str:
+                    candles.append(HistoricalCandleSchema(
+                        symbol=clean_sym,
+                        exchange=ex,
+                        date=today_str,
+                        open_price=round(curr_price * 0.998, 2),
+                        high_price=curr_high,
+                        low_price=curr_low,
+                        close_price=curr_price,
+                        volume=curr_vol,
+                        pct_change=round(float(live_info.get("change_24h", 0.0)), 2)
+                    ))
+                elif candles[-1].date == today_str:
+                    candles[-1].close_price = curr_price
+                    candles[-1].high_price = max(candles[-1].high_price, curr_high, curr_price)
+                    candles[-1].low_price = min(candles[-1].low_price, curr_low, curr_price)
+                    candles[-1].pct_change = round(float(live_info.get("change_24h", candles[-1].pct_change)), 2)
+        except Exception:
+            pass
+
     return HistoricalSeriesPayloadSchema(
         symbol=clean_sym,
         exchange=ex,

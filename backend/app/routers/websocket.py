@@ -10,19 +10,19 @@ router: APIRouter = APIRouter(tags=["WebSocket"])
 
 # Live base price dictionary
 BASE_PRICES: Dict[str, Dict[str, Any]] = {
-    "NIFTY 50": {"price": 24144.10, "change_24h": 0.45, "company_name": "Nifty 50 Index", "sector": "Index", "token": "26000", "type": "INDEX"},
-    "BANKNIFTY": {"price": 50820.25, "change_24h": 0.88, "company_name": "Bank Nifty Index", "sector": "Index", "token": "26009", "type": "INDEX"},
-    "SENSEX": {"price": 77204.66, "change_24h": -0.21, "company_name": "S&P BSE Sensex Index", "sector": "Index", "token": "1", "type": "INDEX", "exchange": "BSE"},
-    "RELIANCE": {"price": 2985.40, "change_24h": 2.15, "company_name": "Reliance Industries Ltd", "sector": "Energy", "token": "2885", "type": "EQUITY"},
-    "TCS": {"price": 4210.80, "change_24h": -0.45, "company_name": "Tata Consultancy Services", "sector": "IT Services", "token": "11536", "type": "EQUITY"},
-    "HDFCBANK": {"price": 1612.30, "change_24h": 1.65, "company_name": "HDFC Bank Ltd", "sector": "Banking", "token": "1333", "type": "EQUITY"},
+    "NIFTY 50": {"price": 22759.35, "change_24h": 0.22, "company_name": "Nifty 50 Index", "sector": "Index", "token": "26000", "type": "INDEX"},
+    "BANKNIFTY": {"price": 54758.55, "change_24h": 0.35, "company_name": "Bank Nifty Index", "sector": "Index", "token": "26009", "type": "INDEX"},
+    "SENSEX": {"price": 72804.50, "change_24h": 0.18, "company_name": "S&P BSE Sensex Index", "sector": "Index", "token": "1", "type": "INDEX", "exchange": "BSE"},
+    "RELIANCE": {"price": 1192.80, "change_24h": 0.85, "company_name": "Reliance Industries Ltd", "sector": "Energy", "token": "2885", "type": "EQUITY"},
+    "TCS": {"price": 2095.80, "change_24h": -0.25, "company_name": "Tata Consultancy Services", "sector": "IT Services", "token": "11536", "type": "EQUITY"},
+    "HDFCBANK": {"price": 713.80, "change_24h": 0.65, "company_name": "HDFC Bank Ltd", "sector": "Banking", "token": "1333", "type": "EQUITY"},
     "INFY": {"price": 1845.60, "change_24h": 0.92, "company_name": "Infosys Ltd", "sector": "IT Services", "token": "1594", "type": "EQUITY"},
     "ICICIBANK": {"price": 1178.90, "change_24h": 1.15, "company_name": "ICICI Bank Ltd", "sector": "Banking", "token": "4963", "type": "EQUITY"},
-    "TATAMOTORS": {"price": 1042.15, "change_24h": -1.10, "company_name": "Tata Motors Ltd", "sector": "Automotive", "token": "3456", "type": "EQUITY"},
-    "SBIN": {"price": 824.50, "change_24h": 0.75, "company_name": "State Bank of India", "sector": "Banking", "token": "3045", "type": "EQUITY"},
-    "TATASTEEL": {"price": 184.09, "change_24h": -1.19, "company_name": "Tata Steel Ltd", "sector": "Metals", "token": "3499", "type": "EQUITY"},
-    "BEL": {"price": 408.55, "change_24h": 0.11, "company_name": "Bharat Electronics Ltd", "sector": "Defence", "token": "383", "type": "EQUITY"},
-    "BHARTIARTL": {"price": 1485.20, "change_24h": 1.85, "company_name": "Bharti Airtel Ltd", "sector": "Telecom", "token": "10604", "type": "EQUITY"},
+    "TATAMOTORS": {"price": 980.50, "change_24h": -0.80, "company_name": "Tata Motors Ltd", "sector": "Automotive", "token": "3456", "type": "EQUITY"},
+    "SBIN": {"price": 815.20, "change_24h": 0.45, "company_name": "State Bank of India", "sector": "Banking", "token": "3045", "type": "EQUITY"},
+    "TATASTEEL": {"price": 172.50, "change_24h": -0.65, "company_name": "Tata Steel Ltd", "sector": "Metals", "token": "3499", "type": "EQUITY"},
+    "BEL": {"price": 385.00, "change_24h": 0.11, "company_name": "Bharat Electronics Ltd", "sector": "Defence", "token": "383", "type": "EQUITY"},
+    "BHARTIARTL": {"price": 1680.00, "change_24h": 1.15, "company_name": "Bharti Airtel Ltd", "sector": "Telecom", "token": "10604", "type": "EQUITY"},
     "LT": {"price": 3620.40, "change_24h": 0.65, "company_name": "Larsen & Toubro Ltd", "sector": "Infrastructure", "token": "11483", "type": "EQUITY"},
     "AXISBANK": {"price": 1180.30, "change_24h": -0.80, "company_name": "Axis Bank Ltd", "sector": "Banking", "token": "5900", "type": "EQUITY"},
     "KOTAKBANK": {"price": 1790.60, "change_24h": 0.42, "company_name": "Kotak Mahindra Bank", "sector": "Banking", "token": "1922", "type": "EQUITY"},
@@ -62,8 +62,11 @@ class ConnectionManager:
                 "timestamp": int(time.time() * 1000)
             }
 
-    async def connect(self, websocket: WebSocket) -> None:
-        await websocket.accept()
+    async def connect(self, websocket: WebSocket) -> bool:
+        try:
+            await websocket.accept()
+        except Exception:
+            return False
         self.active_connections.append(websocket)
         self.subscribed_symbols[websocket] = set(BASE_PRICES.keys())
         
@@ -81,6 +84,7 @@ class ConnectionManager:
         # Start broadcaster if not already running
         if self.broadcaster_task is None or self.broadcaster_task.done():
             self.broadcaster_task = asyncio.create_task(self._live_feed_broadcaster())
+        return True
 
     def disconnect(self, websocket: WebSocket) -> None:
         if websocket in self.active_connections:
@@ -103,8 +107,22 @@ class ConnectionManager:
                 self.disconnect(connection)
 
     async def _live_feed_broadcaster(self) -> None:
-        """Continuously simulates and streams live ticks and candle bars to connected clients."""
+        """Streams live ticks and candle bars only during active market sessions."""
         while self.active_connections:
+            # Check market status: Freeze prices if market is closed
+            try:
+                from app.routers.nse_market import get_indian_market_status
+                m_status = get_indian_market_status()
+                is_open = bool(m_status.is_market_open)
+            except Exception:
+                is_open = False
+
+            if not is_open:
+                # Market is CLOSED (Weekend, Post-Close, or AMO).
+                # Freeze all prices to official close levels without drifting or ticking.
+                await asyncio.sleep(2.0)
+                continue
+
             now_sec = int(time.time())
             candle_time = (now_sec // 60) * 60  # 1m aligned candle timestamp
             
@@ -115,7 +133,7 @@ class ConnectionManager:
                 state = self.live_state[sym]
                 old_p = state["price"]
                 
-                # Realistic micro drift (-0.15% to +0.15%)
+                # Micro drift (-0.15% to +0.15%)
                 drift_pct = random.gauss(0.0001, 0.0012)
                 new_p = round(old_p * (1.0 + drift_pct), 2)
                 
@@ -153,6 +171,7 @@ class ConnectionManager:
                 tick_msg = {
                     "type": "TICK",
                     "symbol": sym,
+                    "symbol_clean": sym.replace("-EQ", ""),
                     "ticker": state,
                     "candle": candle_packet,
                     "timestamp": time.time()
@@ -160,13 +179,77 @@ class ConnectionManager:
 
                 await self.broadcast(tick_msg)
 
+                # Emit option ticks for major index derivatives so Option charts update live
+                if sym == "NIFTY 50":
+                    atm = round(new_p / 50.0) * 50.0
+                    for diff in (-50, 0, 50):
+                        strike_val = int(atm + diff)
+                        for opt_type in ("CE", "PE"):
+                            opt_sym = f"NIFTY {strike_val} {opt_type}"
+                            intr = max(0.0, new_p - strike_val) if opt_type == "CE" else max(0.0, strike_val - new_p)
+                            time_val = max(15.0, new_p * 0.006)
+                            opt_price = round(intr + time_val, 2)
+                            await self.broadcast({
+                                "type": "TICK",
+                                "symbol": opt_sym,
+                                "ticker": {
+                                    "symbol": opt_sym,
+                                    "price": opt_price,
+                                    "day_high": round(opt_price * 1.03, 2),
+                                    "day_low": round(opt_price * 0.97, 2),
+                                    "volume_24h": state["volume_24h"] // 10,
+                                    "change_24h": state["change_24h"]
+                                },
+                                "candle": {
+                                    "time": candle_time,
+                                    "open": opt_price,
+                                    "high": round(opt_price * 1.01, 2),
+                                    "low": round(opt_price * 0.99, 2),
+                                    "close": opt_price,
+                                    "volume": state["volume_24h"] // 10
+                                },
+                                "timestamp": time.time()
+                            })
+                elif sym == "BANKNIFTY":
+                    atm = round(new_p / 100.0) * 100.0
+                    for diff in (-100, 0, 100):
+                        strike_val = int(atm + diff)
+                        for opt_type in ("CE", "PE"):
+                            opt_sym = f"BANKNIFTY {strike_val} {opt_type}"
+                            intr = max(0.0, new_p - strike_val) if opt_type == "CE" else max(0.0, strike_val - new_p)
+                            time_val = max(35.0, new_p * 0.007)
+                            opt_price = round(intr + time_val, 2)
+                            await self.broadcast({
+                                "type": "TICK",
+                                "symbol": opt_sym,
+                                "ticker": {
+                                    "symbol": opt_sym,
+                                    "price": opt_price,
+                                    "day_high": round(opt_price * 1.03, 2),
+                                    "day_low": round(opt_price * 0.97, 2),
+                                    "volume_24h": state["volume_24h"] // 15,
+                                    "change_24h": state["change_24h"]
+                                },
+                                "candle": {
+                                    "time": candle_time,
+                                    "open": opt_price,
+                                    "high": round(opt_price * 1.01, 2),
+                                    "low": round(opt_price * 0.99, 2),
+                                    "close": opt_price,
+                                    "volume": state["volume_24h"] // 15
+                                },
+                                "timestamp": time.time()
+                            })
+
             await asyncio.sleep(0.75)  # Tick rate ~750ms
 
 manager: ConnectionManager = ConnectionManager()
 
 @router.websocket("/ws/live-feed")
 async def websocket_live_feed(websocket: WebSocket) -> None:
-    await manager.connect(websocket)
+    connected = await manager.connect(websocket)
+    if not connected:
+        return
     try:
         while True:
             raw = await websocket.receive_text()
@@ -192,5 +275,6 @@ async def websocket_live_feed(websocket: WebSocket) -> None:
                     }))
             except json.JSONDecodeError:
                 await websocket.send_text(json.dumps({"event": "PONG", "timestamp": time.time()}))
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError, Exception):
         manager.disconnect(websocket)
+

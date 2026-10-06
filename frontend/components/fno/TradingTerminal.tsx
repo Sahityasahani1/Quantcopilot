@@ -105,6 +105,8 @@ export const TradingTerminal: React.FC = () => {
   const splitChartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<any> | null>(null);
   const splitSeriesRef = useRef<ISeriesApi<any> | null>(null);
+  const latestCandleRef = useRef<any>(null);
+  const livePriceRef = useRef<number>(24144.10);
 
   // Indicator series refs
   const ema9SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
@@ -237,9 +239,9 @@ export const TradingTerminal: React.FC = () => {
       });
     } catch {}
 
-    // Fetch candle history
-    fetch(`${getApiBaseUrl()}/api/v1/fno/history/${encodeURIComponent(selectedFnoSymbol)}?timeframe=${timeframe}&limit=90`)
-
+    // Fetch candle history (Full 1-Year on 1D timeframe)
+    const queryLimit = timeframe === "1D" ? 365 : (timeframe === "1h" ? 250 : (timeframe === "15m" ? 200 : 160));
+    fetch(`${getApiBaseUrl()}/api/v1/fno/history/${encodeURIComponent(selectedFnoSymbol)}?timeframe=${timeframe}&limit=${queryLimit}`)
       .then((res) => res.json())
       .then((data: CandlestickData[]) => {
         if (isDisposed) return;
@@ -247,6 +249,9 @@ export const TradingTerminal: React.FC = () => {
 
         try {
           if (data && data.length > 0 && seriesRef.current) {
+            latestCandleRef.current = { ...data[data.length - 1] };
+            livePriceRef.current = data[data.length - 1].close;
+
             if (chartType === "LINE" || chartType === "AREA") {
               const lineData: LineData[] = data.map(d => ({ time: d.time, value: d.close }));
               mainSeries.setData(lineData);
@@ -293,19 +298,76 @@ export const TradingTerminal: React.FC = () => {
       })
       .catch(() => {});
 
-    // WebSocket real-time updates
+    // WebSocket real-time updates for high-precision live ticks
     const ws = new WebSocket(`${getWsBaseUrl()}/ws/live-feed`);
 
     ws.onmessage = (event) => {
       if (isDisposed) return;
       try {
         const msg = JSON.parse(event.data);
-        if (msg.symbol === selectedFnoSymbol && msg.candle && seriesRef.current && !isDisposed) {
+        if (!msg || msg.type !== "TICK") return;
+
+        const targetSym = selectedFnoSymbol.replace("-EQ", "").trim().toUpperCase();
+        const msgSym = (msg.symbol || "").replace("-EQ", "").trim().toUpperCase();
+        const msgClean = (msg.symbol_clean || "").replace("-EQ", "").trim().toUpperCase();
+
+        // 1. Direct stock / benchmark match
+        let isMatch = targetSym === msgSym || targetSym === msgClean;
+        let livePrice: number | null = msg.ticker ? msg.ticker.price : (msg.candle ? msg.candle.close : null);
+
+        // 2. Option contract matching (derive option price tick from underlying spot)
+        if (!isMatch && (targetSym.startsWith(msgSym) || targetSym.startsWith(msgClean))) {
+          const parts = targetSym.split(" ");
+          if (parts.length >= 3) {
+            const strike = parseFloat(parts[1]);
+            const optType = parts[2].toUpperCase();
+            if (!isNaN(strike) && livePrice != null) {
+              const spot = livePrice;
+              const intr = optType === "CE" ? Math.max(0, spot - strike) : Math.max(0, strike - spot);
+              const timeVal = Math.max(12.0, spot * 0.007);
+              livePrice = Number((intr + timeVal).toFixed(2));
+              isMatch = true;
+            }
+          }
+        }
+
+        if (isMatch && livePrice != null && seriesRef.current && !isDisposed) {
           try {
-            if (chartType === "LINE" || chartType === "AREA") {
-              mainSeries.update({ time: msg.candle.time, value: msg.candle.close });
-            } else {
-              mainSeries.update(msg.candle);
+            const nowSec = Math.floor(Date.now() / 1000);
+            const intervalSec = timeframe === "1m" ? 60 : timeframe === "5m" ? 300 : timeframe === "15m" ? 900 : timeframe === "1h" ? 3600 : 86400;
+
+            livePriceRef.current = livePrice;
+
+            if (latestCandleRef.current) {
+              const prev = latestCandleRef.current;
+              const barTime = timeframe === "1D" ? prev.time : Math.floor(nowSec / intervalSec) * intervalSec;
+              
+              const updatedHigh = Math.max(prev.high, livePrice);
+              const updatedLow = Math.min(prev.low, livePrice);
+              const updatedBar = {
+                time: barTime,
+                open: prev.open,
+                high: Number(updatedHigh.toFixed(2)),
+                low: Number(updatedLow.toFixed(2)),
+                close: Number(livePrice.toFixed(2))
+              };
+
+              latestCandleRef.current = updatedBar;
+
+              if (chartType === "LINE" || chartType === "AREA") {
+                mainSeries.update({ time: barTime, value: Number(livePrice.toFixed(2)) });
+              } else {
+                mainSeries.update(updatedBar);
+              }
+
+              // Flash live OHLCV inspector with every small price tick
+              setHoverCandle({
+                open: prev.open,
+                high: updatedBar.high,
+                low: updatedBar.low,
+                close: updatedBar.close,
+                time: barTime
+              });
             }
           } catch {}
         }

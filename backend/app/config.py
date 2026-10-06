@@ -10,11 +10,15 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "quantcopilot"
     REDIS_URL: str = "redis://localhost:6379/0"
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/quantcopilot"
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: list[str] = ["*"]
+
     GNN_MODEL_HIDDEN_DIM: int = 64
     GNN_ATTENTION_HEADS: int = 8
     GNN_LAYERS: int = 3
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     class Config:
         case_sensitive = True
