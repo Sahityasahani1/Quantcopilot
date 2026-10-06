@@ -218,8 +218,22 @@ class DeepForecasterEngine:
                 
         self.model.eval()
 
-    def _extract_features(self, prices: List[float], volumes: Optional[List[float]] = None) -> np.ndarray:
-        """Transforms prices/volumes into the 18-alpha feature matrix."""
+    def _extract_features(
+        self, 
+        prices: List[float], 
+        volumes: Optional[List[float]] = None,
+        df: Optional[pd.DataFrame] = None
+    ) -> np.ndarray:
+        """Transforms DataFrame or prices/volumes into the 18-alpha feature matrix."""
+        if df is not None and not df.empty and len(df) >= 15:
+            sub_df = df.tail(75).reset_index(drop=True)
+            mat, _ = build_alpha_feature_matrix(sub_df)
+            if len(mat) < 60:
+                pad = np.tile(mat[0:1], (60 - len(mat), 1))
+                mat = np.vstack([pad, mat])
+            return mat[-60:].astype(np.float32)
+
+
         arr = np.array(prices, dtype=np.float32)
         n = len(arr)
         if n < 60:
@@ -231,7 +245,7 @@ class DeepForecasterEngine:
         else:
             vols = np.array(volumes[-len(arr):], dtype=np.float32)
             
-        df = pd.DataFrame({
+        sim_df = pd.DataFrame({
             "Open": arr * 0.998,
             "High": arr * 1.005,
             "Low": arr * 0.995,
@@ -242,7 +256,7 @@ class DeepForecasterEngine:
             "DelivPct": np.full(len(arr), 50.0)
         })
         
-        mat, _ = build_alpha_feature_matrix(df)
+        mat, _ = build_alpha_feature_matrix(sim_df)
         return mat[-60:].astype(np.float32)
 
     def forecast(
@@ -250,21 +264,25 @@ class DeepForecasterEngine:
         symbol: str,
         prices: List[float],
         volumes: Optional[List[float]] = None,
+        df: Optional[pd.DataFrame] = None,
         target_return_pct: Optional[float] = None,
         timeframe_secs: int = 300
     ) -> Dict[str, Any]:
         """
-        Runs neural forecast and produces quantile paths.
+        Runs neural forecast and produces quantile paths with complete schema compatibility.
         """
-        if not prices:
+        if df is not None and not df.empty and "Close" in df.columns:
+            prices = df["Close"].tolist()
+        elif not prices:
             prices = [100.0] * 60
             
         current_price = float(prices[-1])
-        features_arr = self._extract_features(prices, volumes)
+        features_arr = self._extract_features(prices, volumes, df=df)
         x_tensor = torch.tensor(features_arr, dtype=torch.float32).unsqueeze(0)
         
-        with torch.no_grad():
+        with torch.inference_mode():
             preds = self.model(x_tensor)
+
             
         median_drift = preds["median_drift"][0].numpy()
         upper_80_drift = preds["upper_80_drift"][0].numpy()
@@ -281,6 +299,7 @@ class DeepForecasterEngine:
         
         for step in range(self.horizon):
             ts = now_ts + (step + 1) * timeframe_secs
+            time_str = time.strftime("%H:%M", time.localtime(ts))
             p_median = current_price * (1.0 + float(median_drift[step]))
             p_u80 = current_price * (1.0 + float(upper_80_drift[step]))
             p_l80 = current_price * (1.0 + float(lower_80_drift[step]))
@@ -289,7 +308,15 @@ class DeepForecasterEngine:
             
             future_steps.append({
                 "step": step + 1,
-                "timestamp": ts,
+                "timestamp": time_str,
+                "basePrice": round(p_median, 2),
+                "upperConfidence80": round(p_u80, 2),
+                "lowerConfidence80": round(p_l80, 2),
+                "upperConfidence95": round(p_u95, 2),
+                "lowerConfidence95": round(p_l95, 2),
+                "bullishPrice": round(p_u80, 2),
+                "bearishPrice": round(p_l80, 2),
+                "goalPathPrice": round(p_median, 2),
                 "predicted_price": round(p_median, 2),
                 "upper_80": round(p_u80, 2),
                 "lower_80": round(p_l80, 2),
@@ -300,51 +327,54 @@ class DeepForecasterEngine:
             
         trend_labels = ["BULLISH", "BEARISH", "RANGE_BOUND"]
         dominant_trend = trend_labels[int(np.argmax(trend_probs))]
-        trend_confidence = float(np.max(trend_probs))
+        raw_conf = float(np.max(trend_probs))
+        trend_conf_pct = round(raw_conf * 100.0 if raw_conf <= 1.0 else raw_conf, 1)
         
-        prob_target_reached = None
-        expected_steps_to_target = None
-        if target_return_pct is not None:
-            target_price = current_price * (1.0 + target_return_pct / 100.0)
-            hits = [i for i, step in enumerate(future_steps) if (step["upper_95"] >= target_price if target_return_pct > 0 else step["lower_95"] <= target_price)]
-            if hits:
-                prob_target_reached = round(min(0.95, max(0.05, 0.5 + (0.4 if dominant_trend == ("BULLISH" if target_return_pct > 0 else "BEARISH") else -0.2))), 2)
-                expected_steps_to_target = hits[0] + 1
-            else:
-                prob_target_reached = 0.15
-                expected_steps_to_target = None
-                
-        feature_importance_map = {
-            self.feature_names[i]: round(float(feat_imp[i]), 4)
-            for i in range(len(self.feature_names))
-        }
+        feature_importance_list = []
+        feature_importance_map = {}
+        for i in range(len(self.feature_names)):
+            fname = self.feature_names[i]
+            w = float(feat_imp[i])
+            pct = round(w * 100.0, 2)
+            feature_importance_map[fname] = round(w, 4)
+            feature_importance_list.append({
+                "feature": fname.replace("_", " "),
+                "weight": round(w, 4),
+                "importancePct": pct
+            })
+        feature_importance_list.sort(key=lambda x: x["importancePct"], reverse=True)
         
         last_step_attn = attn_weights[-1, :]
+        recent_attention = [round(float(v), 4) for v in last_step_attn[-8:]]
         top_k_indices = np.argsort(last_step_attn)[-5:][::-1]
         temporal_highlights = [
             {"lookback_step": int(idx), "attention_weight": round(float(last_step_attn[idx]), 4)}
             for idx in top_k_indices
         ]
         
+        expected_drift = round(float(median_drift[-1]) * 100.0, 2)
+        vol_envelope = round(float(upper_95_drift[-1] - lower_95_drift[-1]) * 100.0, 2)
+        
         return {
             "symbol": symbol,
+            "currentPrice": current_price,
             "current_price": current_price,
+            "horizonBars": self.horizon,
             "horizon_periods": self.horizon,
+            "dominantTrend": dominant_trend,
             "dominant_trend": dominant_trend,
-            "trend_confidence": round(trend_confidence, 4),
-            "trend_probabilities": {
-                "bullish": round(float(trend_probs[0]), 4),
-                "bearish": round(float(trend_probs[1]), 4),
-                "range_bound": round(float(trend_probs[2]), 4)
-            },
+            "trendConfidence": trend_conf_pct,
+            "trend_confidence": round(raw_conf, 4),
+            "expectedDriftPct": expected_drift,
+            "volatilityEnvelopePct": max(1.0, vol_envelope),
             "trajectory": future_steps,
-            "target_analysis": {
-                "target_return_pct": target_return_pct,
-                "probability_reached": prob_target_reached,
-                "expected_steps_to_target": expected_steps_to_target
-            } if target_return_pct is not None else None,
+            "featureImportance": feature_importance_list[:7],
             "feature_importance": feature_importance_map,
-            "temporal_attention_highlights": temporal_highlights
+            "recentTemporalAttention": recent_attention,
+            "temporal_attention_highlights": temporal_highlights,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }
 
 deep_forecaster = DeepForecasterEngine(horizon=20)
+forecaster_engine = deep_forecaster
+

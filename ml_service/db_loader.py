@@ -206,27 +206,31 @@ class DatabaseMarketLoader:
 
     def load_market_history(self, symbols: Optional[List[str]] = None) -> Dict[str, pd.DataFrame]:
         """
-        Unified Loader: Tries PostgreSQL first, then SQLite, then CSV cache.
+        Unified Loader: Tries SQLite embedded SQL first, then PostgreSQL, then CSV cache.
         """
-        # 1. Try PostgreSQL
+        # 1. Try SQLite SQL storage
+        sqlite_dfs = self.load_from_sqlite(symbols)
+        if sqlite_dfs and len(sqlite_dfs) > 0:
+            return sqlite_dfs
+
+        # 2. Try PostgreSQL
         try:
-            pg_dfs = asyncio.run(self.load_from_postgres_async(symbols))
-            if pg_dfs and len(pg_dfs) > 0:
-                logging.info(f"Loaded {len(pg_dfs)} symbol time series directly from PostgreSQL database.")
-                return pg_dfs
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is None:
+                pg_dfs = asyncio.run(self.load_from_postgres_async(symbols))
+                if pg_dfs and len(pg_dfs) > 0:
+                    return pg_dfs
         except Exception:
             pass
 
-        # 2. Try SQLite SQL storage
-        sqlite_dfs = self.load_from_sqlite(symbols)
-        if sqlite_dfs and len(sqlite_dfs) > 0:
-            logging.info(f"Loaded {len(sqlite_dfs)} symbol time series from SQLite SQL storage.")
-            return sqlite_dfs
-
         # 3. Fallback to CSV cache
         csv_dfs = self.load_from_csv_cache(symbols)
-        logging.info(f"Loaded {len(csv_dfs)} symbol time series from local data cache.")
         return csv_dfs
+
 
     async def sync_bhavcopy_to_postgres(self) -> int:
         """
