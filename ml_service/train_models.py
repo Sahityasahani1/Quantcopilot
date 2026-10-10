@@ -18,6 +18,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from ml_service.feature_engine import build_alpha_feature_matrix, ALPHA_FEATURE_NAMES
 from ml_service.deep_forecaster import TemporalAttentionForecaster, QuantileHuberLoss
@@ -34,7 +36,7 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 # 1. DATABASE & REDIS-FED 18-ALPHA TIME-SERIES DATASET LOADER
 # ==============================================================================
 class MarketSequenceDataset(Dataset):
-    def __init__(self, source: str = "postgres", seq_len: int = 60, horizon: int = 20):
+    def __init__(self, source: str = "sqlite", seq_len: int = 60, horizon: int = 90):
         self.seq_len = seq_len
         self.horizon = horizon
         self.samples_x: List[np.ndarray] = []
@@ -43,34 +45,44 @@ class MarketSequenceDataset(Dataset):
         logging.info(f"Loading market datasets from SQL database (source: {source.upper()})...")
         symbol_dfs = db_market_loader.load_market_history()
         
+        cache_path = os.path.join(os.path.dirname(__file__), "data_cache", "live_indian_prices.json")
+        live_prices_map: Dict[str, Any] = {}
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    live_prices_map = json.load(f)
+            except Exception:
+                pass
+
         for sym, df in symbol_dfs.items():
             try:
                 close_col = "Close" if "Close" in df.columns else ("Adj Close" if "Adj Close" in df.columns else None)
                 if close_col is None or len(df) < (seq_len + horizon + 10):
                     continue
                 
-                # Check Redis for live intraday buffer
-                live_tick = db_market_loader.load_live_buffer_from_redis(sym)
-                if live_tick and "price" in live_tick:
+                # Attach live price from cached live market data if available
+                live_info = live_prices_map.get(sym)
+                if live_info and "price" in live_info:
                     live_row = {
                         "Date": time.strftime("%Y-%m-%d"),
-                        "Open": live_tick.get("open_price", live_tick["price"]),
-                        "High": live_tick.get("day_high", live_tick["price"]),
-                        "Low": live_tick.get("day_low", live_tick["price"]),
-                        "Close": live_tick["price"],
-                        "AvgPrice": live_tick.get("price"),
-                        "Volume": live_tick.get("volume_24h", 100000),
+                        "Open": live_info.get("open_price", live_info["price"]),
+                        "High": live_info.get("day_high", live_info["price"]),
+                        "Low": live_info.get("day_low", live_info["price"]),
+                        "Close": live_info["price"],
+                        "AvgPrice": live_info.get("price"),
+                        "Volume": live_info.get("volume_24h", 100000),
                         "DelivQty": 0,
                         "DelivPct": 50.0,
                         "Trades": 10000
                     }
                     df = pd.concat([df, pd.DataFrame([live_row])], ignore_index=True)
+
                 
                 prices = df[close_col].dropna().values.astype(np.float32)
                 features, _ = build_alpha_feature_matrix(df)
                 
-                # Sliding windows with step size 2 for balanced density
-                for i in range(0, len(features) - seq_len - horizon, 2):
+                # Sliding windows with step size 10 for fast, high-quality representation
+                for i in range(0, len(features) - seq_len - horizon, 10):
                     x = features[i : i + seq_len]
                     curr_p = prices[i + seq_len - 1]
                     future_p = prices[i + seq_len : i + seq_len + horizon]
@@ -78,10 +90,11 @@ class MarketSequenceDataset(Dataset):
                     
                     self.samples_x.append(x)
                     self.samples_y.append(y_drift)
+
             except Exception as e:
                 logging.warning(f"Skipping symbol {sym} due to error: {e}")
                 
-        logging.info(f"Constructed {len(self.samples_x)} 18-Alpha multi-horizon sequence windows from SQL database (T={seq_len}).")
+        logging.info(f"Constructed {len(self.samples_x)} 18-Alpha multi-horizon sequence windows from SQL database (T={seq_len}, Horizon={horizon}).")
 
     def __len__(self) -> int:
         return max(1, len(self.samples_x))
@@ -98,22 +111,23 @@ class MarketSequenceDataset(Dataset):
 # ==============================================================================
 # 2. TRAINING ROUTINES
 # ==============================================================================
-def train_temporal_forecaster(source: str = "postgres", epochs: int = 8, batch_size: int = 64, lr: float = 1e-3, device: str = "cpu"):
+def train_temporal_forecaster(source: str = "sqlite", epochs: int = 8, batch_size: int = 64, lr: float = 1e-3, device: str = "cpu"):
     """Trains the 18-Alpha Spatio-Temporal Attention Forecaster from PostgreSQL & Redis."""
     logging.info("=" * 65)
-    logging.info(f"🧠 TRAINING 18-ALPHA FORECASTER (SOURCE: {source.upper()}, T=60)")
+    logging.info(f"🧠 TRAINING 18-ALPHA FORECASTER (SOURCE: {source.upper()}, T=60, HORIZON=90)")
     logging.info("=" * 65)
 
-    dataset = MarketSequenceDataset(source=source, seq_len=60, horizon=20)
+    dataset = MarketSequenceDataset(source=source, seq_len=60, horizon=90)
     if len(dataset) < 5:
         logging.error("Not enough historical data found in database. Run db_loader.py --sync first.")
         return
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    model = TemporalAttentionForecaster(input_dim=18, hidden_dim=128, horizon=20, num_heads=8, dropout=0.1).to(device)
+    model = TemporalAttentionForecaster(input_dim=18, hidden_dim=128, horizon=90, num_heads=8, dropout=0.1).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     criterion = QuantileHuberLoss()
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=max(2, epochs // 2), T_mult=2)
+
 
     model.train()
     start_time = time.time()
@@ -168,7 +182,7 @@ def train_drl_agent(source: str = "postgres", episodes: int = 25, lr: float = 5e
     optimizer = torch.optim.AdamW(agent.parameters(), lr=lr, weight_decay=1e-4)
 
     price_series_list = []
-    for sym, df in list(symbol_dfs.items())[:12]:
+    for sym, df in list(symbol_dfs.items()):
         try:
             c = "Close" if "Close" in df.columns else "Adj Close"
             if c in df.columns and len(df) > 100:
@@ -187,8 +201,11 @@ def train_drl_agent(source: str = "postgres", episodes: int = 25, lr: float = 5e
 
     for ep in range(1, episodes + 1):
         prices = price_series_list[ep % len(price_series_list)]
-        n_steps = min(200, len(prices) - 2)
-        start_idx = np.random.randint(15, max(16, len(prices) - n_steps - 1))
+        if len(prices) < 40:
+            continue
+        max_possible = len(prices) - 17
+        n_steps = min(120, max_possible)
+        start_idx = np.random.randint(15, len(prices) - n_steps)
         
         log_probs = []
         values = []
@@ -271,11 +288,11 @@ def train_drl_agent(source: str = "postgres", episodes: int = 25, lr: float = 5e
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="QuantCopilot 18-Alpha SQL/Redis Deep Learning Training")
-    parser.add_argument("--source", type=str, default="postgres", help="Data source: postgres, redis, or csv")
-    parser.add_argument("--epochs", type=int, default=8, help="Forecaster training epochs")
-    parser.add_argument("--episodes", type=int, default=25, help="DRL agent training episodes")
+    parser.add_argument("--source", type=str, default="sqlite", help="Data source: sqlite, postgres, redis, or csv")
+    parser.add_argument("--epochs", type=int, default=5, help="Forecaster training epochs")
+    parser.add_argument("--episodes", type=int, default=30, help="DRL agent training episodes")
     parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
-    parser.add_argument("--device", type=str, default="cpu", help="Device (cpu or cuda)")
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cpu or cuda)")
     args = parser.parse_args()
 
     logging.info(f"Starting 18-Alpha training on device: {args.device.upper()} from Source: {args.source.upper()}")

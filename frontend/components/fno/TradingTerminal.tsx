@@ -239,8 +239,8 @@ export const TradingTerminal: React.FC = () => {
       });
     } catch {}
 
-    // Fetch candle history (Full 1-Year on 1D timeframe)
-    const queryLimit = timeframe === "1D" ? 365 : (timeframe === "1h" ? 250 : (timeframe === "15m" ? 200 : 160));
+    // Fetch candle history (90 days for Equity desk or 1D, or standard lookback)
+    const queryLimit = activeDesk === "EQUITY" || timeframe === "1D" ? 90 : (timeframe === "1h" ? 250 : (timeframe === "15m" ? 200 : 160));
     fetch(`${getApiBaseUrl()}/api/v1/fno/history/${encodeURIComponent(selectedFnoSymbol)}?timeframe=${timeframe}&limit=${queryLimit}`)
       .then((res) => res.json())
       .then((data: CandlestickData[]) => {
@@ -276,6 +276,10 @@ export const TradingTerminal: React.FC = () => {
             } else {
               mainSeries.setData(data);
             }
+
+            try {
+              chart.timeScale().fitContent();
+            } catch {}
 
             if (indicators.ema9 && ema9SeriesRef.current) {
               const ema9 = calculateEMA(data, 9);
@@ -380,16 +384,29 @@ export const TradingTerminal: React.FC = () => {
         try {
           const newWidth = chartContainerRef.current.clientWidth;
           const newHeight = chartContainerRef.current.clientHeight;
-          chartRef.current.applyOptions({ width: newWidth, height: newHeight });
-          setChartDims({ width: newWidth, height: newHeight });
+          if (newWidth > 0 && newHeight > 0) {
+            chartRef.current.applyOptions({ width: newWidth, height: newHeight });
+            setChartDims({ width: newWidth, height: newHeight });
+          }
         } catch {}
       }
     };
     window.addEventListener("resize", handleResize);
 
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && chartContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(chartContainerRef.current);
+    }
+
     return () => {
       isDisposed = true;
       window.removeEventListener("resize", handleResize);
+      if (resizeObserver) {
+        try { resizeObserver.disconnect(); } catch {}
+      }
       try {
         ws.close();
       } catch {}
@@ -403,7 +420,7 @@ export const TradingTerminal: React.FC = () => {
       ema50SeriesRef.current = null;
       ema200SeriesRef.current = null;
     };
-  }, [selectedFnoSymbol, timeframe, chartType, indicators]);
+  }, [selectedFnoSymbol, timeframe, chartType, indicators, activeDesk]);
 
   // Split Contract Chart
   useEffect(() => {
@@ -740,7 +757,10 @@ export const TradingTerminal: React.FC = () => {
       <div className="flex items-center justify-between px-3 py-1.5 bg-[#0C100F] border-b border-white/[0.065] text-xs shrink-0 font-sans">
         <div className="flex items-center space-x-1 bg-[#111614] p-0.5 rounded-sm border border-white/[0.065]">
           <button
-            onClick={() => setActiveDesk("EQUITY")}
+            onClick={() => {
+              setActiveDesk("EQUITY");
+              setTimeframe("1D");
+            }}
             className={`px-3 py-1 rounded-sm text-xs font-medium transition-all duration-150 ${
               activeDesk === "EQUITY" ? "bg-[#161C19] text-[#F2F0E8] border border-white/[0.08] shadow-sm" : "text-[#A7ADA8] hover:text-[#F2F0E8]"
             }`}
@@ -775,7 +795,7 @@ export const TradingTerminal: React.FC = () => {
         </div>
       </div>
 
-      <div key={activeDesk} className="flex flex-1 overflow-hidden animate-fade-in-up">
+      <div className="flex flex-1 overflow-hidden animate-fade-in-up">
         {activeDesk === "AI_SCAN" ? (
           <div className="flex-1 flex overflow-hidden border-r border-white/[0.065]">
             <AiScanDashboard

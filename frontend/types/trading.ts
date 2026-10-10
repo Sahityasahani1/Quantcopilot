@@ -112,6 +112,8 @@ export interface DetectedPatternAPI {
   status: string;
   pivots: PatternPivot[];
   description: string;
+  actionable_guidance?: string;
+  actionableGuidance?: string;
 }
 
 export interface ChartPatternData {
@@ -135,6 +137,7 @@ export interface ChartPatternData {
   confidencePct?: number;
   status?: string;
   description?: string;
+  actionableGuidance?: string;
   isAiDetected?: boolean;
 }
 
@@ -204,6 +207,12 @@ export interface PredictionPayload {
     achievedPct: number;
   }[];
   appliedToChart: boolean;
+  feasibilityDiagnosis?: string;
+  safetyChecklist?: {
+    title: string;
+    detail: string;
+  }[];
+  traderActionSummary?: string;
 }
 
 export interface GrowwCompanyOverview {
@@ -273,6 +282,10 @@ export interface FinbertOverallSentiment {
   neutral_count: number;
   bullish_ratio: number;
   sentiment_trend: "IMPROVING" | "DETERIORATING" | "STABLE";
+  marketNarrative?: string;
+  bullishCatalysts?: string[];
+  cautionFlags?: string[];
+  traderActionRecommendation?: string;
 }
 
 export interface SebiPolicyItem {
@@ -315,6 +328,15 @@ export interface TickerDataSummary {
   beta?: number;
   dominant_trend: "BULLISH" | "BEARISH" | "NEUTRAL";
   executive_summary: string;
+  copilotVerdict?: {
+    technicalStance: string;
+    sentimentAlignment: string;
+    convictionScore: number;
+    headlineVerdict: string;
+  };
+  keyCatalysts?: string[];
+  keyRisks?: string[];
+  actionAdvice?: string;
 }
 
 export interface FuturePriceForecastPoint {

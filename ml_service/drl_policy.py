@@ -193,6 +193,84 @@ class DRLExecutionSimulator:
         target_price = round(spot * (1.0 + target_pct), 2)
         stop_loss = round(spot * (1.0 + sl_pct), 2)
         qty = max(1, int(100000.0 / max(1.0, spot)))
+
+        # User-Oriented AI Reasoning & Playbook Synthesis
+        primary_driver = top_drivers[0]["feature"] if top_drivers else "Momentum"
+        secondary_driver = top_drivers[1]["feature"] if len(top_drivers) > 1 else "Volume"
+        
+        if action_name == "LONG":
+            reasoning = (
+                f"QuantCopilot detects bullish continuation momentum on {symbol}. "
+                f"The primary catalyst is strong {primary_driver.lower()} ({top_drivers[0]['importancePct']}%) combined with favorable {secondary_driver.lower()}. "
+                f"Downside volatility remains well-contained with positive Sortino expectancy (+{state_val:.2f}), confirming an asymmetric upside opportunity."
+            )
+            playbook = {
+                "stance": "HIGH_CONVICTION_LONG" if conf_pct >= 65 else "SELECTIVE_ACCUMULATION",
+                "entryZone": f"₹{spot * 0.998:.2f} - ₹{spot * 1.002:.2f}",
+                "targetMilestone1": round(spot + (target_price - spot) * 0.5, 2),
+                "targetMilestone2": target_price,
+                "invalidationRule": f"Close position immediately if 5-minute candle closes below ₹{stop_loss:.2f}",
+                "riskRewardRatio": round(abs(target_price - spot) / max(0.1, abs(spot - stop_loss)), 2),
+                "sizingAdvice": f"Allocate up to {int(size_factor * 100)}% of standard lot size (Kelly Factor: {size_factor:.2f})."
+            }
+        elif action_name == "SHORT":
+            reasoning = (
+                f"QuantCopilot detects distribution and elevated downside pressure on {symbol}. "
+                f"Driven by deteriorating {primary_driver.lower()} ({top_drivers[0]['importancePct']}%) and resistance overhead. "
+                f"The DRL policy recommends defensive short exposure with tightly protected stop-loss."
+            )
+            playbook = {
+                "stance": "DEFENSIVE_SHORT",
+                "entryZone": f"₹{spot * 0.998:.2f} - ₹{spot * 1.002:.2f}",
+                "targetMilestone1": round(spot + (target_price - spot) * 0.5, 2),
+                "targetMilestone2": target_price,
+                "invalidationRule": f"Cover immediately if price rebounds and closes above ₹{stop_loss:.2f}",
+                "riskRewardRatio": round(abs(spot - target_price) / max(0.1, abs(stop_loss - spot)), 2),
+                "sizingAdvice": f"Conservative sizing: allocate up to {int(size_factor * 80)}% lot size."
+            }
+        elif action_name == "HEDGE":
+            reasoning = (
+                f"QuantCopilot identifies heightened two-way market volatility on {symbol}. "
+                f"Mixed signals between {primary_driver.lower()} and systemic risk vectors suggest directional trades carry elevated risk. "
+                f"Delta-neutral options hedging or protective collars are favored."
+            )
+            playbook = {
+                "stance": "VOLATILITY_HEDGE",
+                "entryZone": f"Current market price ₹{spot:.2f}",
+                "targetMilestone1": round(spot * 1.015, 2),
+                "targetMilestone2": target_price,
+                "invalidationRule": f"Rebalance hedge if underlying moves beyond ±2.5%",
+                "riskRewardRatio": 1.5,
+                "sizingAdvice": "Maintain delta-hedged posture; cap speculative risk."
+            }
+        else: # HOLD
+            reasoning = (
+                f"QuantCopilot observes range-bound consolidation on {symbol}. "
+                f"Neither buyers nor sellers demonstrate decisive control across {primary_driver.lower()}. "
+                f"Cash conservation and patient waiting for breakout confirmation are advised."
+            )
+            playbook = {
+                "stance": "PATIENT_HOLD",
+                "entryZone": "Wait for clear breakout before entering",
+                "targetMilestone1": round(spot * 1.01, 2),
+                "targetMilestone2": target_price,
+                "invalidationRule": "No active position required",
+                "riskRewardRatio": 1.0,
+                "sizingAdvice": "Zero new capital allocation until directional edge appears."
+            }
+
+        metric_explanations = {
+            "policyEntropy": "Low uncertainty (Agent has strong conviction)" if entropy < 0.8 else "Moderate ambiguity across conflicting indicators",
+            "stateValue": f"Sortino-adjusted return expectancy of {state_val:+.3f}",
+            "sizingFactor": f"Optimal allocation of {int(size_factor * 100)}% based on continuous Kelly Criterion"
+        }
+
+        confidence_breakdown = {
+            "directionalConviction": conf_pct,
+            "modelCertaintyPct": round(max(20.0, min(99.0, (1.0 - (entropy / 1.386)) * 100.0)), 1),
+            "upsidePotentialPct": round(((target_price - spot) / spot) * 100.0, 2),
+            "downsideRiskPct": round(abs((spot - stop_loss) / spot) * 100.0, 2)
+        }
         
         return {
             "symbol": symbol,
@@ -214,6 +292,14 @@ class DRLExecutionSimulator:
             "recommendedQuantity": qty,
             "sizingFactor": round(size_factor, 2),
             "kelly_position_size": round(size_factor, 2),
+            "aiReasoning": reasoning,
+            "ai_reasoning": reasoning,
+            "userPlaybook": playbook,
+            "user_playbook": playbook,
+            "metricExplanations": metric_explanations,
+            "metric_explanations": metric_explanations,
+            "confidenceBreakdown": confidence_breakdown,
+            "confidence_breakdown": confidence_breakdown,
             "feature_attributions": {
                 self.FEATURE_NAMES[i]: round(float(state_vec[i]), 4)
                 for i in range(min(len(self.FEATURE_NAMES), len(state_vec)))

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePortfolioStore } from "../../store/usePortfolioStore";
 import { 
   X, 
   TrendingUp, 
@@ -26,9 +27,11 @@ export const GrowwOverviewDrawer: React.FC<GrowwOverviewDrawerProps> = ({
   currentPrice,
   onOpenOrderModal
 }) => {
+  const { indianTickers } = usePortfolioStore();
   if (!isOpen) return null;
 
-  const price = currentPrice || 1000;
+  const cleanSym = symbol ? symbol.replace("-EQ", "").toUpperCase() : "";
+  const price = currentPrice > 0 ? currentPrice : (indianTickers[cleanSym]?.price || 2400);
   const todayLow = Number((price * 0.982).toFixed(2));
   const todayHigh = Number((price * 1.018).toFixed(2));
   const fiftyTwoWeekLow = Number((price * 0.72).toFixed(2));

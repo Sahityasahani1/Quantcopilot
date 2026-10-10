@@ -27,7 +27,10 @@ import {
   Sparkles,
   Clock,
   Radio,
-  Rss
+  Rss,
+  Lightbulb,
+  Check,
+  Info
 } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
 
@@ -51,13 +54,47 @@ interface AiScanDashboardProps {
 
 const TRACKED_TICKERS = [
   { symbol: "RELIANCE", name: "Reliance Industries" },
-  { symbol: "TCS", name: "Tata Consultancy" },
+  { symbol: "TCS", name: "Tata Consultancy Services" },
   { symbol: "HDFCBANK", name: "HDFC Bank" },
   { symbol: "INFY", name: "Infosys" },
   { symbol: "ICICIBANK", name: "ICICI Bank" },
   { symbol: "SBIN", name: "State Bank of India" },
+  { symbol: "BHARTIARTL", name: "Bharti Airtel" },
+  { symbol: "ITC", name: "ITC Limited" },
+  { symbol: "LT", name: "Larsen & Toubro" },
+  { symbol: "HINDUNILVR", name: "Hindustan Unilever" },
+  { symbol: "BAJFINANCE", name: "Bajaj Finance" },
+  { symbol: "BAJAJFINSV", name: "Bajaj Finserv" },
+  { symbol: "MARUTI", name: "Maruti Suzuki India" },
   { symbol: "TATAMOTORS", name: "Tata Motors" },
-  { symbol: "NIFTY 50", name: "Nifty 50 Index" }
+  { symbol: "TATASTEEL", name: "Tata Steel" },
+  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank" },
+  { symbol: "AXISBANK", name: "Axis Bank" },
+  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical" },
+  { symbol: "TITAN", name: "Titan Company" },
+  { symbol: "ULTRACEMCO", name: "UltraTech Cement" },
+  { symbol: "ASIANPAINT", name: "Asian Paints" },
+  { symbol: "M&M", name: "Mahindra & Mahindra" },
+  { symbol: "HCLTECH", name: "HCL Technologies" },
+  { symbol: "WIPRO", name: "Wipro" },
+  { symbol: "NTPC", name: "NTPC Limited" },
+  { symbol: "ONGC", name: "Oil & Natural Gas Corp" },
+  { symbol: "COALINDIA", name: "Coal India" },
+  { symbol: "ADANIENT", name: "Adani Enterprises" },
+  { symbol: "ADANIPORTS", name: "Adani Ports & SEZ" },
+  { symbol: "BEL", name: "Bharat Electronics" },
+  { symbol: "HAL", name: "Hindustan Aeronautics" },
+  { symbol: "JSWSTEEL", name: "JSW Steel" },
+  { symbol: "GRASIM", name: "Grasim Industries" },
+  { symbol: "HINDALCO", name: "Hindalco Industries" },
+  { symbol: "DIVISLAB", name: "Divi's Laboratories" },
+  { symbol: "NESTLEIND", name: "Nestle India" },
+  { symbol: "AMBUJACEM", name: "Ambuja Cement" },
+  { symbol: "SHREECEM", name: "Shree Cement" },
+  { symbol: "LICI", name: "Life Insurance Corp (LIC)" },
+  { symbol: "RPOWER", name: "RIR Power Electronics" },
+  { symbol: "NIFTY 50", name: "Nifty 50 Index" },
+  { symbol: "BANKNIFTY", name: "Bank Nifty Index" }
 ];
 
 export const AiScanDashboard: React.FC<AiScanDashboardProps> = ({
@@ -310,10 +347,75 @@ export const AiScanDashboard: React.FC<AiScanDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* Executive Summary synthesis */}
-                <div className="p-2.5 rounded-lg bg-black border border-emerald-950 text-[11px] leading-relaxed text-emerald-300">
-                  <span className="font-bold text-emerald-400 uppercase text-[10px] block mb-1">Executive AI Synthesis</span>
-                  {data.summary.executive_summary}
+                {/* Quant Copilot Verdict & Executive Synthesis */}
+                <div className="space-y-2 mb-3">
+                  <div className="p-3 rounded-lg bg-black border border-emerald-950 text-[11px] leading-relaxed text-emerald-300 space-y-2">
+                    <div className="flex items-center justify-between border-b border-emerald-950/80 pb-1.5">
+                      <div className="flex items-center space-x-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                        <span className="font-extrabold text-emerald-300 uppercase text-[10px] tracking-wide">Quant Copilot Verdict</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-black">
+                        {data.summary.copilotVerdict?.headlineVerdict || data.summary.dominant_trend}
+                      </span>
+                    </div>
+
+                    <p className="text-emerald-300/90 leading-relaxed">
+                      {data.summary.executive_summary}
+                    </p>
+
+                    {/* Stance & Conviction pill row */}
+                    {data.summary.copilotVerdict && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px] font-mono">
+                        <div className="bg-[#040805] p-1.5 rounded border border-emerald-950">
+                          <span className="text-emerald-600 block font-sans">Stance:</span>
+                          <span className="text-emerald-400 font-bold">{data.summary.copilotVerdict.technicalStance}</span>
+                        </div>
+                        <div className="bg-[#040805] p-1.5 rounded border border-emerald-950">
+                          <span className="text-emerald-600 block font-sans">Conviction:</span>
+                          <span className="text-emerald-300 font-bold">{data.summary.copilotVerdict.convictionScore}% Confidence</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Advice Callout */}
+                    {data.summary.actionAdvice && (
+                      <div className="flex items-start space-x-2 bg-emerald-950/30 p-2 rounded border border-emerald-900/50 text-[11px] text-emerald-200">
+                        <Lightbulb className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span><strong>Trader Action:</strong> {data.summary.actionAdvice}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Catalysts & Risks Highlights */}
+                  {((data.summary.keyCatalysts && data.summary.keyCatalysts.length > 0) || (data.summary.keyRisks && data.summary.keyRisks.length > 0)) && (
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      {data.summary.keyCatalysts && data.summary.keyCatalysts.length > 0 && (
+                        <div className="bg-black p-2 rounded-lg border border-emerald-950 space-y-1">
+                          <span className="text-emerald-400 font-bold uppercase flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Key Catalysts
+                          </span>
+                          <ul className="space-y-0.5 text-emerald-500/80">
+                            {data.summary.keyCatalysts.slice(0, 2).map((c, i) => (
+                              <li key={i} className="truncate" title={c}>&bull; {c}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {data.summary.keyRisks && data.summary.keyRisks.length > 0 && (
+                        <div className="bg-black p-2 rounded-lg border border-emerald-950 space-y-1">
+                          <span className="text-rose-400 font-bold uppercase flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" /> Key Risks
+                          </span>
+                          <ul className="space-y-0.5 text-rose-400/80">
+                            {data.summary.keyRisks.slice(0, 2).map((r, i) => (
+                              <li key={i} className="truncate" title={r}>&bull; {r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -471,6 +573,43 @@ export const AiScanDashboard: React.FC<AiScanDashboardProps> = ({
                   />
                 </div>
               </div>
+
+              {/* FinBERT Market Narrative & Actionable Takeaway */}
+              {(data.finbert_sentiment.marketNarrative || data.finbert_sentiment.traderActionRecommendation) && (
+                <div className="bg-black p-3 rounded-lg border border-emerald-950 mb-3 space-y-2 text-xs">
+                  {data.finbert_sentiment.marketNarrative && (
+                    <div className="text-emerald-300/90 leading-relaxed text-[11px]">
+                      <span className="font-extrabold text-emerald-400 uppercase text-[10px] block mb-0.5">NLP Market Narrative:</span>
+                      {data.finbert_sentiment.marketNarrative}
+                    </div>
+                  )}
+
+                  {data.finbert_sentiment.traderActionRecommendation && (
+                    <div className="flex items-start space-x-2 bg-emerald-950/30 p-2 rounded border border-emerald-900/40 text-[11px] text-emerald-200">
+                      <Lightbulb className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                      <span><strong>News Sentiment Takeaway:</strong> {data.finbert_sentiment.traderActionRecommendation}</span>
+                    </div>
+                  )}
+
+                  {/* Bullish Catalysts & Caution Flags from news */}
+                  {((data.finbert_sentiment.bullishCatalysts && data.finbert_sentiment.bullishCatalysts.length > 0) || (data.finbert_sentiment.cautionFlags && data.finbert_sentiment.cautionFlags.length > 0)) && (
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-emerald-950/60 text-[10px]">
+                      {data.finbert_sentiment.bullishCatalysts && data.finbert_sentiment.bullishCatalysts.length > 0 && (
+                        <div className="space-y-0.5">
+                          <span className="text-emerald-400 font-bold block">&bull; News Catalysts:</span>
+                          <p className="text-emerald-500/80 truncate">{data.finbert_sentiment.bullishCatalysts[0]}</p>
+                        </div>
+                      )}
+                      {data.finbert_sentiment.cautionFlags && data.finbert_sentiment.cautionFlags.length > 0 && (
+                        <div className="space-y-0.5">
+                          <span className="text-rose-400 font-bold block">&bull; Caution Flags:</span>
+                          <p className="text-rose-400/80 truncate">{data.finbert_sentiment.cautionFlags[0]}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* News Articles Feed */}
               <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">

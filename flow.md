@@ -401,6 +401,44 @@ flowchart LR
 5. **Trajectory Projection**: Engine projects multi-horizon fan envelope ($q_{0.025} \dots q_{0.975}$) and ranks top contributing features.
 6. **Visual Rendering**: UI displays the multi-step confidence envelope, dominant trend badge (`BULLISH` / `BEARISH` / `RANGE_BOUND`), and feature importance ranking.
 
+### Sub-Flow D: Real-Time News Sentiment & Causal GNN Edge Modulation
+1. **Feed Polling**: `news_scheduler.py` runs asynchronous background loop polling news RSS feeds.
+2. **Transformer Inference**: `finbert_sentiment.py` batches headlines into ProsusAI FinBERT tokenizer, computing sentiment distributions.
+3. **Polarity Mapping**: Sentiment score $\in [-1.0, +1.0]$ is broadcasted via WebSocket (`/ws/live-feed`) to the frontend ticker ribbon.
+4. **Graph Edge Weighting**: The CausalGraphX risk engine adapts asset edge connections based on cross-asset sentiment divergence.
+
+### Sub-Flow E: Vectorized Geometric Pattern Recognition
+1. **Chart Initialization**: TradingTerminal requests historical candle records for selected instrument.
+2. **Extremum Detection**: `pattern_detector.py` scans local minima and maxima across sliding candle windows.
+3. **Structural Classification**: Evaluates geometry for Head & Shoulders, Double Tops/Bottoms, Flags, and Triangles.
+4. **Target Calculation**: Computes breakout confirmation triggers, target price projections, and stop-loss levels.
+5. **Visual Overlay**: Endpoint `GET /api/v1/fno/pattern-detection` delivers SVG coordinates rendered dynamically over the candlestick chart.
+
+### Sub-Flow F: Institutional Command Palette & Live Paper Trading
+1. **Keyboard Trigger**: User presses `Cmd+K` or `Ctrl+K` anywhere across the workstation.
+2. **Fuzzy Search Execution**: `CommandPalette.tsx` filters across all 160+ master instruments, option expiries, and navigation routes.
+3. **Action Routing**: User selecting an item instantly dispatches global store mutations (`setSelectedSymbol`, navigation tabs).
+4. **Paper Simulation**: In `LivePortfolioLab.tsx`, simulated orders update mock balances, track real mark-to-market valuations, and enforce SEBI circuit constraints.
+
+### Sub-Flow G: High-Frequency Options Micro-Tick Streaming & 1-Year Candlestick Aggregation
+1. **Historical Backfill**: Upon selecting any equity or index derivative, `IndianMarketWidget.tsx` requests full 365-day OHLCV candles via `GET /api/v1/fno/history/{symbol}` or `GET /api/v1/nse/equity/history/{symbol}`.
+2. **WebSocket Registration**: Client establishes `ws://localhost:8000/ws/live-feed` connection and subscribes to active symbols.
+3. **Dynamic Options Synthesis**: `websocket.py` computes real-time micro-price movements for underlyings and dynamically prices near-the-money call (CE) and put (PE) contracts with simulated Greeks and time decay.
+4. **Sub-Second Candle Aggregation**: Incoming ticks update the active bar (`open`, `high`, `low`, `close`, `volume`) in Lightweight Charts in real time, preventing chart flicker.
+
+### Sub-Flow H: Institutional Watchlist Audit & Multi-Factor Liquidity Scanning
+1. **Navigation Trigger**: User switches to the **Watchlist Audit** view (`WatchlistAuditView.tsx`).
+2. **Multi-Factor Correlation**: Component queries constituent data across the Nifty 50 and custom watchlists, evaluating price deviations, volume ratios, and GNN risk contagion scores.
+3. **Alpha Radar & Technical Divergence**: Displays technical breakout status, moving average alignments (20/50/200 DMA), and sentiment overlays.
+4. **Direct Execution Trigger**: One-click action prompts the `OrderExecutionModal` or auto-populates paper orders in `LivePortfolioLab`.
+
+### Sub-Flow I: Daily Dynamic GNN Systemic Risk Calculation & Pipeline
+1. **Historical Returns Ingestion**: `daily_gnn_service.py` queries closing price series for 40 Nifty constituents over rolling 60–120 trading days from PostgreSQL (`STOCK_PREDICT` / `historical_stock_data`).
+2. **Correlation Matrix Construction**: Engine computes $N \times N$ cross-asset Pearson correlation matrix and daily percentage returns.
+3. **18-Alpha Feature Engineering**: Computes 1-day return, 10d/20d momentum, 60-day historical volatility, VaR (5%), upside (95%), and rolling Sharpe ratios.
+4. **PyTorch GAT Forward Pass**: Passes features and adjacency through `MarketContagionGAT`, computing individual asset risk scores, centralities, sector contagion vulnerabilities, and the global systemic risk index (`overall_system_risk`).
+5. **Caching & Telemetry Delivery**: Caches output in `gnn_correlation_payload.json` and memory; FastAPI endpoint `GET /api/v1/portfolio/risk/gnn-metrics` serves payload to the frontend, rendering the real-time **DAILY GNN SYSTEM RISK** badge in the workstation header.
+
 ---
 
 ## 10. Operational Flow Quiz & Self-Verification Checks

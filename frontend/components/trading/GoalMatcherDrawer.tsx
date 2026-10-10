@@ -8,7 +8,10 @@ import {
   Target, 
   TrendingUp, 
   ArrowRight,
-  BarChart2
+  BarChart2,
+  ShieldCheck,
+  CheckCircle2,
+  Lightbulb
 } from "lucide-react";
 
 interface GoalMatcherDrawerProps {
@@ -104,6 +107,32 @@ export const GoalMatcherDrawer: React.FC<GoalMatcherDrawerProps> = ({
     const stopLoss = Number((price * 0.965).toFixed(2));
     const suggestedLots = Math.max(1, Math.round(goalSettings.capitalAllocated / (price * 25)));
 
+    const dailyDriftNeeded = Math.abs(returnPct) / days;
+    const diagnosis = feasibility >= 75
+      ? `High Feasibility (${feasibility}%): Your target of ${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}% over ${days} days requires ~${dailyDriftNeeded.toFixed(2)}% daily drift, well within ${symbol}'s normal historical volatility envelope.`
+      : feasibility >= 50
+      ? `Moderate Feasibility (${feasibility}%): Target requires ~${dailyDriftNeeded.toFixed(2)}% daily drift, achievable during trending momentum phases.`
+      : `Stretched Feasibility (${feasibility}%): Target requires aggressive ~${dailyDriftNeeded.toFixed(2)}% daily drift. Consider extending your time horizon to improve statistical probability.`;
+
+    const safetyList = [
+      {
+        title: "Capital Protection Invalidation",
+        detail: `Strict stop-loss at ₹${stopLoss.toLocaleString("en-IN")} limits maximum potential downside to ~3.5% of allocated capital.`
+      },
+      {
+        title: "Milestone Profit De-Risking",
+        detail: `De-risk at T1 milestone (Day ${Math.round(days * 0.3)}) by booking 30% profits and trailing your stop-loss to entry price.`
+      },
+      {
+        title: "Risk-to-Reward Ratio",
+        detail: `Expected risk-to-reward is 1 : ${Math.max(1.5, Number((Math.abs(returnPct) / 3.5).toFixed(1)))}, satisfying quantitative capital preservation rules.`
+      }
+    ];
+
+    const traderSummary = returnPct >= 0
+      ? `Execute a LONG position of ${suggestedLots * 25} shares near ₹${price.toFixed(2)}. Target ₹${targetP.toFixed(2)} with invalidation at ₹${stopLoss.toFixed(2)}.`
+      : `Execute a SHORT/HEDGE position near ₹${price.toFixed(2)}. Target ₹${targetP.toFixed(2)} with invalidation stop at ₹${(price * 1.035).toFixed(2)}.`;
+
     const result: PredictionPayload = {
       symbol,
       currentPrice: price,
@@ -122,7 +151,10 @@ export const GoalMatcherDrawer: React.FC<GoalMatcherDrawerProps> = ({
         { day: Math.round(days * 0.7), price: Number((price + (targetP - price) * 0.7).toFixed(2)), label: "T2 Milestone (70%)", achievedPct: 70 },
         { day: days, price: targetP, label: "Full Goal Target (100%)", achievedPct: 100 }
       ],
-      appliedToChart: true
+      appliedToChart: true,
+      feasibilityDiagnosis: diagnosis,
+      safetyChecklist: safetyList,
+      traderActionSummary: traderSummary
     };
 
     setSimulatedPrediction(result);
@@ -360,6 +392,55 @@ export const GoalMatcherDrawer: React.FC<GoalMatcherDrawerProps> = ({
                     <span>Risk Stop</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Quant Copilot Feasibility & Safety Check Card */}
+              <div className="bg-[#111614] border border-[#159570]/30 rounded p-4 space-y-3 font-sans">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="h-4 w-4 text-[#159570]" />
+                    <span className="text-xs font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                      Quant Copilot Feasibility &amp; Safety Check
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#42A77A] bg-[#159570]/15 px-2 py-0.5 rounded border border-[#159570]/30">
+                    Confidence: {simulatedPrediction.feasibilityScore}%
+                  </span>
+                </div>
+
+                {/* Feasibility Diagnosis */}
+                <div className="text-xs text-[#D8DCDA] leading-relaxed p-2.5 rounded bg-[#0C100F] border border-white/[0.04]">
+                  {simulatedPrediction.feasibilityDiagnosis}
+                </div>
+
+                {/* Safety Checklist Items */}
+                {simulatedPrediction.safetyChecklist && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] text-[#A7ADA8] font-semibold uppercase tracking-wider block">
+                      Trader Risk Checklist:
+                    </span>
+                    {simulatedPrediction.safetyChecklist.map((item, idx) => (
+                      <div key={idx} className="flex items-start space-x-2 text-xs bg-[#0C100F]/60 p-2 rounded border border-white/[0.03]">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-[#42A77A] shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-[#F2F0E8] text-[11px] block">{item.title}</strong>
+                          <span className="text-[#A7ADA8] text-[11px] leading-tight block">{item.detail}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Trader Action Summary */}
+                {simulatedPrediction.traderActionSummary && (
+                  <div className="flex items-start space-x-2 bg-[#159570]/10 p-2.5 rounded border border-[#159570]/25 text-xs text-[#F2F0E8]">
+                    <Lightbulb className="h-4 w-4 text-[#C8A96B] shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-[#C8A96B] text-[11px] uppercase tracking-wide block">Action Plan:</strong>
+                      <span className="text-[#D8DCDA] leading-tight">{simulatedPrediction.traderActionSummary}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actionable Strategy Recommendation */}

@@ -201,7 +201,9 @@ class ChartPatternDetector:
                     breakout_pt,
                     target_pt
                 ],
-                "description": f"Bullish W reversal confirmed at ₹{neckline} neckline with ₹{target} target (+{target_pct}%)."
+                "description": f"Bullish W reversal confirmed at ₹{neckline} neckline with ₹{target} target (+{target_pct}%).",
+                "actionable_guidance": f"Wait for 5m candle close above ₹{neckline}. Place stop-loss at ₹{stop_loss} and target ₹{target} (Risk/Reward 1:{rr}).",
+                "actionableGuidance": f"Wait for 5m candle close above ₹{neckline}. Place stop-loss at ₹{stop_loss} and target ₹{target} (Risk/Reward 1:{rr})."
             }
         return None
 
@@ -276,7 +278,9 @@ class ChartPatternDetector:
                     breakdown_pt,
                     target_pt
                 ],
-                "description": f"Bearish M breakdown confirmed below ₹{neckline} neckline with ₹{target} target ({target_pct}%)."
+                "description": f"Bearish M breakdown confirmed below ₹{neckline} neckline with ₹{target} target ({target_pct}%).",
+                "actionable_guidance": f"Short breakdown below ₹{neckline} with stop-loss at ₹{stop_loss}. Initial target at ₹{target} (Risk/Reward 1:{rr}).",
+                "actionableGuidance": f"Short breakdown below ₹{neckline} with stop-loss at ₹{stop_loss}. Initial target at ₹{target} (Risk/Reward 1:{rr})."
             }
         return None
 
@@ -363,7 +367,9 @@ class ChartPatternDetector:
                     breakdown_pt,
                     target_pt
                 ],
-                "description": f"Classic Head & Shoulders breakdown projecting downside target of ₹{target} ({target_pct}%)."
+                "description": f"Classic Head & Shoulders breakdown projecting downside target of ₹{target} ({target_pct}%).",
+                "actionable_guidance": f"Bearish trend reversal confirmed. Enter short below neckline ₹{neckline} with stop at ₹{stop_loss} and target ₹{target}.",
+                "actionableGuidance": f"Bearish trend reversal confirmed. Enter short below neckline ₹{neckline} with stop at ₹{stop_loss} and target ₹{target}."
             }
         return None
 
@@ -447,7 +453,9 @@ class ChartPatternDetector:
                     breakout_pt,
                     target_pt
                 ],
-                "description": f"Bullish Inverse H&S breakout projecting target of ₹{target} (+{target_pct}%)."
+                "description": f"Bullish Inverse H&S breakout projecting target of ₹{target} (+{target_pct}%).",
+                "actionable_guidance": f"Bullish trend reversal confirmed. Enter long above neckline ₹{neckline} with stop at ₹{stop_loss} and target ₹{target}.",
+                "actionableGuidance": f"Bullish trend reversal confirmed. Enter long above neckline ₹{neckline} with stop at ₹{stop_loss} and target ₹{target}."
             }
         return None
 
@@ -509,7 +517,9 @@ class ChartPatternDetector:
                 {"index": len(df) - 1, "time": current_time, "price": round(current_price, 2), "label": "Breakout"},
                 {"index": len(df) + 8, "time": current_time + 2400, "price": target, "label": "Target"}
             ],
-            "description": f"Bull Flag continuation setup projecting flagpole extension to ₹{target} (+{target_pct}%)."
+            "description": f"Bull Flag continuation setup projecting flagpole extension to ₹{target} (+{target_pct}%).",
+            "actionable_guidance": f"High momentum continuation. Buy breakout of upper flag boundary with trailing stop below flag low ₹{stop_loss}.",
+            "actionableGuidance": f"High momentum continuation. Buy breakout of upper flag boundary with trailing stop below flag low ₹{stop_loss}."
         }
 
     def _detect_ascending_triangle(
@@ -570,7 +580,9 @@ class ChartPatternDetector:
                 {"index": len(df) - 1, "time": current_time, "price": round(current_price, 2), "label": "Breakout"},
                 {"index": len(df) + 8, "time": current_time + 2400, "price": target, "label": "Target"}
             ],
-            "description": f"Ascending Triangle consolidation testing ₹{resistance} resistance with ₹{target} target (+{target_pct}%)."
+            "description": f"Ascending Triangle consolidation testing ₹{resistance} resistance with ₹{target} target (+{target_pct}%).",
+            "actionable_guidance": f"Higher lows converging on horizontal ceiling. Buy confirmed breakout above ₹{resistance} with stop at ₹{stop_loss}.",
+            "actionableGuidance": f"Higher lows converging on horizontal ceiling. Buy confirmed breakout above ₹{resistance} with stop at ₹{stop_loss}."
         }
 
 

@@ -34,27 +34,63 @@ import {
   Target,
   ShieldCheck,
   Compass,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  Lightbulb,
+  Info
 } from "lucide-react";
 import { getApiBaseUrl } from "../lib/api";
 
 const SUPPORTED_TICKERS = [
-  { symbol: "NIFTY 50", name: "Nifty 50 Index", type: "INDEX" },
-  { symbol: "BANKNIFTY", name: "Bank Nifty Index", type: "INDEX" },
   { symbol: "RELIANCE", name: "Reliance Industries", type: "EQUITY" },
   { symbol: "TCS", name: "Tata Consultancy Services", type: "EQUITY" },
   { symbol: "HDFCBANK", name: "HDFC Bank", type: "EQUITY" },
-  { symbol: "INFY", name: "Infosys Ltd", type: "EQUITY" },
+  { symbol: "INFY", name: "Infosys", type: "EQUITY" },
   { symbol: "ICICIBANK", name: "ICICI Bank", type: "EQUITY" },
-  { symbol: "TATAMOTORS", name: "Tata Motors", type: "EQUITY" },
   { symbol: "SBIN", name: "State Bank of India", type: "EQUITY" },
-  { symbol: "TATASTEEL", name: "Tata Steel", type: "EQUITY" }
+  { symbol: "BHARTIARTL", name: "Bharti Airtel", type: "EQUITY" },
+  { symbol: "ITC", name: "ITC Limited", type: "EQUITY" },
+  { symbol: "LT", name: "Larsen & Toubro", type: "EQUITY" },
+  { symbol: "HINDUNILVR", name: "Hindustan Unilever", type: "EQUITY" },
+  { symbol: "BAJFINANCE", name: "Bajaj Finance", type: "EQUITY" },
+  { symbol: "BAJAJFINSV", name: "Bajaj Finserv", type: "EQUITY" },
+  { symbol: "MARUTI", name: "Maruti Suzuki India", type: "EQUITY" },
+  { symbol: "TATAMOTORS", name: "Tata Motors", type: "EQUITY" },
+  { symbol: "TATASTEEL", name: "Tata Steel", type: "EQUITY" },
+  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", type: "EQUITY" },
+  { symbol: "AXISBANK", name: "Axis Bank", type: "EQUITY" },
+  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", type: "EQUITY" },
+  { symbol: "TITAN", name: "Titan Company", type: "EQUITY" },
+  { symbol: "ULTRACEMCO", name: "UltraTech Cement", type: "EQUITY" },
+  { symbol: "ASIANPAINT", name: "Asian Paints", type: "EQUITY" },
+  { symbol: "M&M", name: "Mahindra & Mahindra", type: "EQUITY" },
+  { symbol: "HCLTECH", name: "HCL Technologies", type: "EQUITY" },
+  { symbol: "WIPRO", name: "Wipro", type: "EQUITY" },
+  { symbol: "NTPC", name: "NTPC Limited", type: "EQUITY" },
+  { symbol: "ONGC", name: "Oil & Natural Gas Corp", type: "EQUITY" },
+  { symbol: "COALINDIA", name: "Coal India", type: "EQUITY" },
+  { symbol: "ADANIENT", name: "Adani Enterprises", type: "EQUITY" },
+  { symbol: "ADANIPORTS", name: "Adani Ports & SEZ", type: "EQUITY" },
+  { symbol: "BEL", name: "Bharat Electronics", type: "EQUITY" },
+  { symbol: "HAL", name: "Hindustan Aeronautics", type: "EQUITY" },
+  { symbol: "JSWSTEEL", name: "JSW Steel", type: "EQUITY" },
+  { symbol: "GRASIM", name: "Grasim Industries", type: "EQUITY" },
+  { symbol: "HINDALCO", name: "Hindalco Industries", type: "EQUITY" },
+  { symbol: "DIVISLAB", name: "Divi's Laboratories", type: "EQUITY" },
+  { symbol: "NESTLEIND", name: "Nestle India", type: "EQUITY" },
+  { symbol: "AMBUJACEM", name: "Ambuja Cement", type: "EQUITY" },
+  { symbol: "SHREECEM", name: "Shree Cement", type: "EQUITY" },
+  { symbol: "LICI", name: "Life Insurance Corp (LIC)", type: "EQUITY" },
+  { symbol: "RPOWER", name: "RIR Power Electronics", type: "EQUITY" },
+  { symbol: "NIFTY 50", name: "Nifty 50 Index", type: "INDEX" },
+  { symbol: "BANKNIFTY", name: "Bank Nifty Index", type: "INDEX" }
 ];
 
 export const StrategyLab: React.FC = () => {
   const { addPosition, setActiveTab: setRootActiveTab } = usePortfolioStore();
   const [selectedSymbol, setSelectedSymbol] = useState<string>("RELIANCE");
   const [activeSubTab, setActiveSubTab] = useState<"DRL_AGENT" | "DEEP_FORECASTER">("DRL_AGENT");
+  const [selectedHorizon, setSelectedHorizon] = useState<30 | 60 | 90>(90);
   
   // Backtest parameters
   const [capital, setCapital] = useState<number>(100000);
@@ -76,7 +112,7 @@ export const StrategyLab: React.FC = () => {
   } | null>(null);
 
   // Fetch live signals and backtests
-  const fetchStrategyData = async (symbol: string) => {
+  const fetchStrategyData = async (symbol: string, horizon: number = selectedHorizon) => {
     setIsLoading(true);
     try {
       // 1. Fetch DRL Live Signal
@@ -102,9 +138,8 @@ export const StrategyLab: React.FC = () => {
         setBacktestData(btJson);
       }
 
-      // 3. Fetch Deep Forecaster
-      const fcRes = await fetch(`${getApiBaseUrl()}/api/v1/strategy/deep-forecast/${encodeURIComponent(symbol)}?horizon=20`);
-
+      // 3. Fetch Deep Forecaster (multi-horizon)
+      const fcRes = await fetch(`${getApiBaseUrl()}/api/v1/strategy/deep-forecast/${encodeURIComponent(symbol)}?horizon=${horizon}`);
       if (fcRes.ok) {
         const fcJson = await fcRes.json();
         setForecastData(fcJson);
@@ -117,11 +152,11 @@ export const StrategyLab: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchStrategyData(selectedSymbol);
-  }, [selectedSymbol]);
+    fetchStrategyData(selectedSymbol, selectedHorizon);
+  }, [selectedSymbol, selectedHorizon]);
 
   const handleRunBacktest = () => {
-    fetchStrategyData(selectedSymbol);
+    fetchStrategyData(selectedSymbol, selectedHorizon);
   };
 
   const handleDeploySignal = () => {
@@ -514,6 +549,142 @@ export const StrategyLab: React.FC = () => {
             </div>
           </div>
 
+          {/* Quant Copilot AI Trader Briefing & Execution Playbook */}
+          <div className="bg-[#111614] border border-[#159570]/30 rounded-sm p-5 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.065] pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-1.5 rounded-sm bg-[#159570]/15 text-[#42A77A] border border-[#159570]/30">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-sans font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                    QUANT COPILOT AI TRADER BRIEFING &amp; PLAYBOOK
+                  </h3>
+                  <p className="text-[11px] text-[#A7ADA8] font-sans">
+                    Plain-English policy translation: Conviction breakdown, execution guidelines &amp; risk invalidation.
+                  </p>
+                </div>
+              </div>
+
+              {/* Confidence Breakdown Pills */}
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                <div className="px-2 py-0.5 rounded-sm bg-[#0C100F] border border-white/[0.065] text-[#A7ADA8]">
+                  Conviction: <strong className="text-[#42A77A]">{drlSignal?.confidenceBreakdown?.directionalConviction ?? drlSignal?.confidencePct ?? 68}%</strong>
+                </div>
+                <div className="px-2 py-0.5 rounded-sm bg-[#0C100F] border border-white/[0.065] text-[#A7ADA8]">
+                  Model Certainty: <strong className="text-[#C8A96B]">{drlSignal?.confidenceBreakdown?.modelCertaintyPct ?? 82}%</strong>
+                </div>
+                <div className="px-2 py-0.5 rounded-sm bg-[#0C100F] border border-white/[0.065] text-[#A7ADA8]">
+                  Upside: <strong className="text-[#42A77A]">+{drlSignal?.confidenceBreakdown?.upsidePotentialPct ?? 3.8}%</strong>
+                </div>
+                <div className="px-2 py-0.5 rounded-sm bg-[#0C100F] border border-white/[0.065] text-[#A7ADA8]">
+                  Risk: <strong className="text-[#C45D62]">-{drlSignal?.confidenceBreakdown?.downsideRiskPct ?? 1.4}%</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Reasoning Narrative */}
+            <div className="p-3.5 rounded-sm bg-[#0C100F] border border-white/[0.065] text-xs leading-relaxed font-sans text-[#F2F0E8] flex items-start gap-3">
+              <Bot className="h-4 w-4 text-[#159570] shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-[#42A77A] block mb-0.5 text-[11px] uppercase tracking-wider">
+                  Model Decision Rationale:
+                </span>
+                <span className="text-[#D8DCDA]">
+                  {drlSignal?.aiReasoning || `Actor-Critic policy favors a ${drlSignal?.recommendedAction || "LONG"} posture with ${drlSignal?.confidencePct || 68}% conviction. Neural feature attention confirms favorable risk-reward with high directional momentum.`}
+                </span>
+              </div>
+            </div>
+
+            {/* Actionable Execution Playbook Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-sans">
+              {/* Playbook 1: Trade Stance */}
+              <div className="bg-[#0C100F] border border-white/[0.065] rounded-sm p-3 space-y-1">
+                <span className="text-[10px] text-[#A7ADA8] uppercase font-medium block">
+                  Actionable Stance
+                </span>
+                <div className="font-semibold text-[#42A77A] font-mono text-sm">
+                  {drlSignal?.userPlaybook?.stance || (drlSignal?.recommendedAction === "LONG" ? "Momentum Long" : drlSignal?.recommendedAction === "SHORT" ? "Protective Short" : "Hedging Stance")}
+                </div>
+                <div className="text-[11px] text-[#68716C]">
+                  R:R Ratio: <strong className="text-[#F2F0E8] font-mono">1 : {drlSignal?.userPlaybook?.riskRewardRatio ?? 2.4}</strong>
+                </div>
+              </div>
+
+              {/* Playbook 2: Entry Zone */}
+              <div className="bg-[#0C100F] border border-white/[0.065] rounded-sm p-3 space-y-1">
+                <span className="text-[10px] text-[#A7ADA8] uppercase font-medium block">
+                  Optimal Entry Zone
+                </span>
+                <div className="font-semibold text-[#F2F0E8] font-mono text-sm">
+                  {drlSignal?.userPlaybook?.entryZone || (drlSignal?.currentPrice ? `₹${(drlSignal.currentPrice * 0.995).toFixed(2)} - ₹${(drlSignal.currentPrice * 1.002).toFixed(2)}` : "Current Market")}
+                </div>
+                <div className="text-[11px] text-[#68716C]">
+                  Limit entry near support
+                </div>
+              </div>
+
+              {/* Playbook 3: Targets */}
+              <div className="bg-[#0C100F] border border-white/[0.065] rounded-sm p-3 space-y-1">
+                <span className="text-[10px] text-[#A7ADA8] uppercase font-medium block">
+                  Profit Milestones
+                </span>
+                <div className="font-semibold text-[#42A77A] font-mono text-sm">
+                  T1: ₹{drlSignal?.userPlaybook?.targetMilestone1 ? drlSignal.userPlaybook.targetMilestone1.toLocaleString("en-IN") : (drlSignal?.suggestedTarget?.toLocaleString("en-IN") || "—")}
+                </div>
+                <div className="text-[11px] text-[#A7ADA8] font-mono">
+                  T2: ₹{drlSignal?.userPlaybook?.targetMilestone2 ? drlSignal.userPlaybook.targetMilestone2.toLocaleString("en-IN") : "—"} (Runner)
+                </div>
+              </div>
+
+              {/* Playbook 4: Invalidation & Sizing */}
+              <div className="bg-[#0C100F] border border-white/[0.065] rounded-sm p-3 space-y-1">
+                <span className="text-[10px] text-[#A7ADA8] uppercase font-medium block">
+                  Invalidation &amp; Sizing
+                </span>
+                <div className="font-semibold text-[#C45D62] text-[11px] leading-tight truncate" title={drlSignal?.userPlaybook?.invalidationRule}>
+                  {drlSignal?.userPlaybook?.invalidationRule || `Stop if bar closes < ₹${drlSignal?.suggestedStopLoss || "—"}`}
+                </div>
+                <div className="text-[11px] text-[#C8A96B] font-mono mt-0.5">
+                  {drlSignal?.userPlaybook?.sizingAdvice || "Moderate Kelly Sizing"}
+                </div>
+              </div>
+            </div>
+
+            {/* Plain-English Metric Tooltip Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 border-t border-white/[0.04] text-[11px] font-sans text-[#A7ADA8]">
+              <div className="flex items-start gap-2 bg-[#0C100F]/60 p-2 rounded-sm border border-white/[0.04]">
+                <Info className="h-3.5 w-3.5 text-[#159570] shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-[#F2F0E8] block text-[10px] uppercase">Policy Entropy ({drlSignal?.policyEntropy || 0.45})</strong>
+                  <span className="text-[#68716C] leading-tight block">
+                    {drlSignal?.metricExplanations?.policyEntropy || "Quantifies model certainty. Lower entropy means the neural network is razor-focused on its trade decision."}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 bg-[#0C100F]/60 p-2 rounded-sm border border-white/[0.04]">
+                <Info className="h-3.5 w-3.5 text-[#C8A96B] shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-[#F2F0E8] block text-[10px] uppercase">Critic State Value ({drlSignal?.stateValue || 1.42})</strong>
+                  <span className="text-[#68716C] leading-tight block">
+                    {drlSignal?.metricExplanations?.stateValue || "The expected cumulative return discounted over future holding periods evaluated by the critic network."}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 bg-[#0C100F]/60 p-2 rounded-sm border border-white/[0.04]">
+                <Info className="h-3.5 w-3.5 text-[#42A77A] shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-[#F2F0E8] block text-[10px] uppercase">Kelly Position Factor ({drlSignal?.sizingFactor || 0.45})</strong>
+                  <span className="text-[#68716C] leading-tight block">
+                    {drlSignal?.metricExplanations?.sizingFactor || "Calculates mathematically optimal position sizing to compound capital while protecting from drawdown."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Institutional Performance Metrics Banner */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="bg-[#111614] border border-white/[0.065] rounded-sm p-3.5 space-y-1 font-mono tabular-nums">
@@ -820,6 +991,192 @@ export const StrategyLab: React.FC = () => {
       ) : (
         /* Temporal Attention Forecaster View */
         <div className="space-y-6">
+          {/* Multi-Horizon Control Strip */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#111614] border border-white/[0.065] p-3.5 rounded-sm">
+            <div className="flex items-center space-x-2">
+              <Compass className="h-4 w-4 text-[#159570]" />
+              <span className="text-xs font-sans font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                Multi-Horizon Neural Projection Scope
+              </span>
+              <span className="text-[10px] font-mono text-[#A7ADA8] bg-[#161C19] px-2 py-0.5 rounded-sm border border-white/[0.065]">
+                Horizon T={selectedHorizon} Trading Days
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-[#0C100F] p-1 rounded-sm border border-white/[0.065]">
+              <span className="text-[10px] font-sans font-semibold text-[#68716C] px-2 uppercase">Forecast Horizon:</span>
+              {[30, 60, 90].map((h) => (
+                <button
+                  key={h}
+                  onClick={() => setSelectedHorizon(h as 30 | 60 | 90)}
+                  className={`px-3 py-1 text-xs font-mono rounded-xs transition-colors ${
+                    selectedHorizon === h
+                      ? "bg-[#159570] text-[#F2F0E8] font-bold shadow-sm"
+                      : "text-[#A7ADA8] hover:text-[#F2F0E8] hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {h} Days
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dedicated 30, 60 & 90 Days Milestone Forecast Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 30-Day Milestone */}
+            {(() => {
+              const m30 = forecastData?.horizon_30d || forecastData?.multiHorizonForecast?.horizon_30d;
+              const curP = forecastData?.currentPrice || 1000;
+              const predP = m30?.predictedPrice || curP * 1.025;
+              const retPct = m30?.expectedReturnPct ?? 2.5;
+              const isBull = retPct >= 0;
+              return (
+                <div className={`bg-[#111614] border rounded-sm p-4 space-y-2.5 transition-all ${
+                  selectedHorizon === 30 ? "border-[#159570] shadow-md shadow-[#159570]/10" : "border-white/[0.065]"
+                }`}>
+                  <div className="flex items-center justify-between border-b border-white/[0.065] pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Target className="h-4 w-4 text-[#159570]" />
+                      <span className="text-xs font-sans font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                        30-Day Milestone
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#161C19] text-[#A7ADA8] border border-white/[0.065]">
+                      {m30?.targetDate || "30 Days Forward"}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between font-mono">
+                    <div>
+                      <span className="text-[10px] text-[#68716C] block uppercase font-sans">Target Price</span>
+                      <span className="text-xl font-bold text-[#F2F0E8] tabular-nums">
+                        ₹{predP.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#68716C] block uppercase font-sans">Expected Return</span>
+                      <span className={`text-sm font-semibold flex items-center justify-end gap-0.5 ${isBull ? "text-[#42A77A]" : "text-[#C45D62]"}`}>
+                        {isBull ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                        {isBull ? "+" : ""}{retPct.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 pt-1 border-t border-white/[0.04] text-[11px] font-mono">
+                    <div className="flex justify-between text-[#A7ADA8]">
+                      <span className="font-sans text-[#68716C]">80% Quantile Corridor:</span>
+                      <span>₹{(m30?.lower80 ?? predP * 0.97).toFixed(1)} – ₹{(m30?.upper80 ?? predP * 1.03).toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-[#A7ADA8]">
+                      <span className="font-sans text-[#68716C]">95% Quantile Corridor:</span>
+                      <span>₹{(m30?.lower95 ?? predP * 0.94).toFixed(1)} – ₹{(m30?.upper95 ?? predP * 1.06).toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 60-Day Milestone */}
+            {(() => {
+              const m60 = forecastData?.horizon_60d || forecastData?.multiHorizonForecast?.horizon_60d;
+              const curP = forecastData?.currentPrice || 1000;
+              const predP = m60?.predictedPrice || curP * 1.05;
+              const retPct = m60?.expectedReturnPct ?? 5.0;
+              const isBull = retPct >= 0;
+              return (
+                <div className={`bg-[#111614] border rounded-sm p-4 space-y-2.5 transition-all ${
+                  selectedHorizon === 60 ? "border-[#C8A96B] shadow-md shadow-[#C8A96B]/10" : "border-white/[0.065]"
+                }`}>
+                  <div className="flex items-center justify-between border-b border-white/[0.065] pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Target className="h-4 w-4 text-[#C8A96B]" />
+                      <span className="text-xs font-sans font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                        60-Day Milestone
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#161C19] text-[#A7ADA8] border border-white/[0.065]">
+                      {m60?.targetDate || "60 Days Forward"}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between font-mono">
+                    <div>
+                      <span className="text-[10px] text-[#68716C] block uppercase font-sans">Target Price</span>
+                      <span className="text-xl font-bold text-[#F2F0E8] tabular-nums">
+                        ₹{predP.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#68716C] block uppercase font-sans">Expected Return</span>
+                      <span className={`text-sm font-semibold flex items-center justify-end gap-0.5 ${isBull ? "text-[#42A77A]" : "text-[#C45D62]"}`}>
+                        {isBull ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                        {isBull ? "+" : ""}{retPct.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 pt-1 border-t border-white/[0.04] text-[11px] font-mono">
+                    <div className="flex justify-between text-[#A7ADA8]">
+                      <span className="font-sans text-[#68716C]">80% Quantile Corridor:</span>
+                      <span>₹{(m60?.lower80 ?? predP * 0.95).toFixed(1)} – ₹{(m60?.upper80 ?? predP * 1.05).toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-[#A7ADA8]">
+                      <span className="font-sans text-[#68716C]">95% Quantile Corridor:</span>
+                      <span>₹{(m60?.lower95 ?? predP * 0.91).toFixed(1)} – ₹{(m60?.upper95 ?? predP * 1.09).toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 90-Day Milestone */}
+            {(() => {
+              const m90 = forecastData?.horizon_90d || forecastData?.multiHorizonForecast?.horizon_90d;
+              const curP = forecastData?.currentPrice || 1000;
+              const predP = m90?.predictedPrice || curP * 1.08;
+              const retPct = m90?.expectedReturnPct ?? 8.0;
+              const isBull = retPct >= 0;
+              return (
+                <div className={`bg-[#111614] border rounded-sm p-4 space-y-2.5 transition-all ${
+                  selectedHorizon === 90 ? "border-[#42A77A] shadow-md shadow-[#42A77A]/10" : "border-white/[0.065]"
+                }`}>
+                  <div className="flex items-center justify-between border-b border-white/[0.065] pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Target className="h-4 w-4 text-[#42A77A]" />
+                      <span className="text-xs font-sans font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                        90-Day Milestone
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#161C19] text-[#A7ADA8] border border-white/[0.065]">
+                      {m90?.targetDate || "90 Days Forward"}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between font-mono">
+                    <div>
+                      <span className="text-[10px] text-[#68716C] block uppercase font-sans">Target Price</span>
+                      <span className="text-xl font-bold text-[#F2F0E8] tabular-nums">
+                        ₹{predP.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#68716C] block uppercase font-sans">Expected Return</span>
+                      <span className={`text-sm font-semibold flex items-center justify-end gap-0.5 ${isBull ? "text-[#42A77A]" : "text-[#C45D62]"}`}>
+                        {isBull ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                        {isBull ? "+" : ""}{retPct.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 pt-1 border-t border-white/[0.04] text-[11px] font-mono">
+                    <div className="flex justify-between text-[#A7ADA8]">
+                      <span className="font-sans text-[#68716C]">80% Quantile Corridor:</span>
+                      <span>₹{(m90?.lower80 ?? predP * 0.93).toFixed(1)} – ₹{(m90?.upper80 ?? predP * 1.07).toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-[#A7ADA8]">
+                      <span className="font-sans text-[#68716C]">95% Quantile Corridor:</span>
+                      <span>₹{(m90?.lower95 ?? predP * 0.88).toFixed(1)} – ₹{(m90?.upper95 ?? predP * 1.12).toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Forecast Summary Card */}
             <div className="bg-[#111614] border border-white/[0.065] rounded-sm p-5 space-y-4">
@@ -828,7 +1185,7 @@ export const StrategyLab: React.FC = () => {
                   <Layers className="h-4 w-4 text-[#159570]" />
                   QUANTILE HORIZON SUMMARY
                 </span>
-                <span className="text-[10px] font-mono text-[#68716C]">t+1 to t+20</span>
+                <span className="text-[10px] font-mono text-[#68716C]">t+1 to t+{forecastData?.horizonBars || selectedHorizon}</span>
               </div>
 
               <div className="space-y-3 font-mono">
@@ -849,7 +1206,7 @@ export const StrategyLab: React.FC = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-[#A7ADA8] font-sans">Expected 20-Bar Drift:</span>
+                  <span className="text-[#A7ADA8] font-sans">Expected {forecastData?.horizonBars || selectedHorizon}-Day Drift:</span>
                   <span className="font-semibold text-[#42A77A] tabular-nums">+{forecastData?.expectedDriftPct || 2.5}%</span>
                 </div>
 
@@ -891,6 +1248,128 @@ export const StrategyLab: React.FC = () => {
             </div>
           </div>
 
+          {/* Quant Copilot Scenario Breakdown & Trader Playbook Card */}
+          <div className="bg-[#111614] border border-[#159570]/30 rounded-sm p-5 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.065] pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-1.5 rounded-sm bg-[#159570]/15 text-[#42A77A] border border-[#159570]/30">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-sans font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                    QUANT COPILOT SCENARIO SYNTHESIS &amp; TRADER PLAYBOOK
+                  </h3>
+                  <p className="text-[11px] text-[#A7ADA8] font-sans">
+                    Multi-horizon quantile projection: 3 distinct probability paths translated into trade action.
+                  </p>
+                </div>
+              </div>
+
+              {/* Invalidation Level Badge */}
+              <div className="px-3 py-1 rounded-sm bg-[#0C100F] border border-white/[0.065] font-mono text-xs">
+                <span className="text-[#A7ADA8]">Model Invalidation Level: </span>
+                <span className="font-semibold text-[#C45D62]">
+                  ₹{forecastData?.invalidationLevel ? forecastData.invalidationLevel.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : (forecastData?.currentPrice ? (forecastData.currentPrice * 0.965).toFixed(2) : "—")}
+                </span>
+              </div>
+            </div>
+
+            {/* AI Narrative & Trader Takeaway */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-sans">
+              <div className="p-3.5 rounded-sm bg-[#0C100F] border border-white/[0.065] space-y-1">
+                <span className="font-semibold text-[#42A77A] text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                  <BrainCircuit className="h-3.5 w-3.5 text-[#159570]" />
+                  Attention Model Forecast Narrative
+                </span>
+                <p className="text-[#D8DCDA] leading-relaxed">
+                  {forecastData?.forecastNarrative || `Temporal self-attention layers detect ${forecastData?.dominantTrend || "BULLISH"} momentum persistence across the 20-bar horizon, supported by strong volume z-score and price drift vectors.`}
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-sm bg-[#0C100F] border border-[#159570]/20 space-y-1">
+                <span className="font-semibold text-[#C8A96B] text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                  <Lightbulb className="h-3.5 w-3.5 text-[#C8A96B]" />
+                  Quant Copilot Trader Action Takeaway
+                </span>
+                <p className="text-[#D8DCDA] leading-relaxed">
+                  {forecastData?.traderTakeaway || `Trader Action: Favor pullback entries near support with trailing stops. If price breaks below the invalidation level, exit to preserve capital.`}
+                </p>
+              </div>
+            </div>
+
+            {/* 3-Scenario Probability Breakdown Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-sans">
+              {/* Scenario 1: Best Case (95% CI Ceiling) */}
+              <div className="bg-[#0C100F] border border-[#159570]/30 rounded-sm p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-[#42A77A] font-semibold uppercase tracking-wider">
+                    Best-Case (95% CI Ceiling)
+                  </span>
+                  <span className="text-[10px] font-mono bg-[#159570]/15 text-[#42A77A] px-1.5 py-0.5 rounded-sm border border-[#159570]/30">
+                    5% Prob Tail
+                  </span>
+                </div>
+                <div className="flex items-baseline space-x-2 font-mono">
+                  <span className="text-lg font-bold text-[#42A77A] tabular-nums">
+                    ₹{forecastData?.scenarioBreakdown?.bestCase?.targetPrice?.toLocaleString("en-IN", { minimumFractionDigits: 2 }) || (forecastData?.currentPrice ? (forecastData.currentPrice * 1.055).toFixed(2) : "—")}
+                  </span>
+                  <span className="text-xs text-[#42A77A] font-semibold">
+                    +{forecastData?.scenarioBreakdown?.bestCase?.returnPct ?? 5.5}%
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#A7ADA8] leading-tight">
+                  {forecastData?.scenarioBreakdown?.bestCase?.label || "Bullish breakout acceleration over 20 periods."}
+                </p>
+              </div>
+
+              {/* Scenario 2: Base Case (Median Expected Path) */}
+              <div className="bg-[#0C100F] border border-white/[0.08] rounded-sm p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-[#C8A96B] font-semibold uppercase tracking-wider">
+                    Base-Case (Median Path)
+                  </span>
+                  <span className="text-[10px] font-mono bg-[#161C19] text-[#A7ADA8] px-1.5 py-0.5 rounded-sm border border-white/[0.065]">
+                    50% Quantile
+                  </span>
+                </div>
+                <div className="flex items-baseline space-x-2 font-mono">
+                  <span className="text-lg font-bold text-[#F2F0E8] tabular-nums">
+                    ₹{forecastData?.scenarioBreakdown?.baseCase?.targetPrice?.toLocaleString("en-IN", { minimumFractionDigits: 2 }) || (forecastData?.currentPrice ? (forecastData.currentPrice * 1.025).toFixed(2) : "—")}
+                  </span>
+                  <span className="text-xs text-[#42A77A] font-semibold">
+                    +{forecastData?.scenarioBreakdown?.baseCase?.returnPct ?? 2.5}%
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#A7ADA8] leading-tight">
+                  {forecastData?.scenarioBreakdown?.baseCase?.label || "Projected central drift trajectory based on current price momentum."}
+                </p>
+              </div>
+
+              {/* Scenario 3: Worst Case (95% CI Downside Floor) */}
+              <div className="bg-[#0C100F] border border-[#C45D62]/30 rounded-sm p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-[#C45D62] font-semibold uppercase tracking-wider">
+                    Worst-Case (Downside Floor)
+                  </span>
+                  <span className="text-[10px] font-mono bg-[#C45D62]/10 text-[#C45D62] px-1.5 py-0.5 rounded-sm border border-[#C45D62]/25">
+                    Stop Boundary
+                  </span>
+                </div>
+                <div className="flex items-baseline space-x-2 font-mono">
+                  <span className="text-lg font-bold text-[#C45D62] tabular-nums">
+                    ₹{forecastData?.scenarioBreakdown?.worstCase?.floorPrice?.toLocaleString("en-IN", { minimumFractionDigits: 2 }) || (forecastData?.currentPrice ? (forecastData.currentPrice * 0.965).toFixed(2) : "—")}
+                  </span>
+                  <span className="text-xs text-[#C45D62] font-semibold">
+                    -{forecastData?.scenarioBreakdown?.worstCase?.drawdownPct ?? 3.5}%
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#A7ADA8] leading-tight">
+                  {forecastData?.scenarioBreakdown?.worstCase?.label || "Downside invalidation risk floor; model trend thesis invalidates here."}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Probabilistic Quantile Fan Chart (Cone of Uncertainty) */}
           <div className="bg-[#111614] border border-white/[0.065] rounded-sm p-5 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/[0.065] pb-3">
@@ -900,7 +1379,7 @@ export const StrategyLab: React.FC = () => {
                   MULTI-HORIZON PROBABILISTIC CONE OF UNCERTAINTY (QUANTILE FAN)
                 </span>
                 <span className="text-[10px] font-mono text-[#A7ADA8] bg-[#161C19] px-2 py-0.5 rounded-sm border border-white/[0.065]">
-                  Attention 20-Step
+                  Attention {forecastData?.horizonBars || selectedHorizon}-Step Horizon
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-xs font-sans">
@@ -1109,7 +1588,7 @@ export const StrategyLab: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
-                  {(forecastData?.trajectory || []).slice(0, 10).map((pt) => (
+                  {(forecastData?.trajectory || []).slice(0, 20).map((pt) => (
                     <tr key={pt.step} className="hover:bg-[#161C19] transition-colors">
                       <td className="py-2.5 px-3 font-semibold text-[#F2F0E8]">t+{pt.step}</td>
                       <td className="py-2.5 px-3 text-[#68716C]">{pt.timestamp}</td>

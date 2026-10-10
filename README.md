@@ -58,6 +58,46 @@ Powered by an asynchronous **FastAPI gateway**, **PyTorch Spatio-Temporal Graph 
 - **Unified SQL Storage**: Over **80,000+ historical bars** stored in PostgreSQL and SQLite with official NSE Delivery % and Trade Counts.
 - **Direct Database Training**: The training pipeline (`train_models.py`) queries SQL records directly, merging real-time Redis tick buffers for training.
 
+### 6. 📰 FinBERT Real-Time News Sentiment Engine
+- **Transformer NLP**: Powered by `ProsusAI/finbert` to evaluate market-moving headlines, macro bulletins, and corporate disclosures.
+- **Causal Graph Weighting**: Quantifies sentiment polarization ($\text{Score} \in [-1.0, +1.0]$) to adjust cross-asset dependency edges in the CausalGraphX network.
+- **Background Ingestion Worker**: `news_scheduler.py` continually aggregates financial feeds, computes rolling sentiment scores, and broadcasts updates over WebSockets.
+
+### 7. 📐 Algorithmic Geometric Pattern Detector
+- **Vectorized Pattern Recognition**: Real-time detection across historical and intraday candle series via `pattern_detector.py`.
+- **Classical Chart Formations**: Double Bottoms, Double Tops, Head & Shoulders, Inverted H&S, Bullish/Bearish Flags, and Pennants/Triangles.
+- **Confidence & Risk Ratios**: Automatically computes confirmation breakout levels, measured move targets, and risk/reward profiles.
+
+### 8. 🛡️ SEBI Regulatory Guardrails & Surveillance Tracker
+- **Exchange Surveillance Monitoring**: Real-time tracking of NSE/BSE Additional Surveillance Measure (ASM) and Graded Surveillance Measure (GSM) frameworks (`sebi_policy_tracker.py`).
+- **Dynamic Circuit Breaker Bands**: Live checks for 5%, 10%, and 20% price bands to avoid strategy traps and illiquid limit orders.
+- **Institutional Governance**: Comprehensive risk management aligned with our [RMMM Framework](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/RMMM_Document_QuantCopilot.md).
+
+### 9. ⚡ Institutional Workstation UI & Trading Suite
+- **Global Command Palette (`Cmd+K` / `Ctrl+K`)**: Instant multi-asset search, quick-action routing, and keyboard shortcut execution (`CommandPalette.tsx`).
+- **AI Scan Dashboard**: Real-time scanning across the Nifty 50 universe with composite algorithmic & technical scores (`AiScanDashboard.tsx`).
+- **AI Universe Audit View**: Multi-factor institutional health inspection, liquidity filtering, and risk exposure auditing (`AiUniverseAuditView.tsx`).
+- **Live Portfolio Lab**: Interactive sandbox and paper trading simulator with real-time mark-to-market valuations (`LivePortfolioLab.tsx`).
+- **Workstation Settings**: Modular customization for streaming frequencies, chart layouts, and telemetry thresholds (`WorkstationSettingsView.tsx`).
+
+### 10. 🏛️ Luxury Obsidian Terminal Design System & SSR Hydration Guard
+- **Obsidian & Champagne Palette**: Built for institutional trading desks with a zero-fatigue dark obsidian palette (`#080A09` background, `#111614` cards, `#161C19` elevated surfaces) and refined champagne gold accents (`#C8A96B`).
+- **Ivory Typography Hierarchy**: High-contrast, elegant typography featuring Warm Ivory (`#F2F0E8`), Secondary Ash (`#A7ADA8`), and Muted Slate (`#68716C`).
+- **SSR Hydration Guard**: Implemented post-mount store hydration (`hydrateFromStorage`) in Zustand and `suppressHydrationWarning` on dynamic real-time telemetry numbers, eliminating React SSR vs client localStorage hydration mismatches.
+- **Watchlist Audit View (`WatchlistAuditView.tsx`)**: Deep institutional audit dashboard providing comprehensive constituent screening, alpha radar breakdown, volume anomaly detection, and rapid paper order routing.
+
+### 11. 📈 1-Year Historical Candle Dataset & Real-Time Options Micro-Ticks
+- **Full 1-Year Historical Candlestick Engines**: Multi-timeframe historical backfill (365 daily sessions) delivered via `backend/app/routers/fno.py` and `nse_market.py` for all equities and indices.
+- **Synthetic Micro-Price Options Tick Generator**: `websocket.py` streams live tick-by-tick micro-price variations (~750ms interval) for equity underlyings and dynamically synthesizes options contracts (`NIFTY 50` and `BANKNIFTY` CE/PE strikes with intrinsic and time-decay pricing).
+- **Sub-Second Candlestick Chart Aggregation**: High-performance streaming into Lightweight Charts in `IndianMarketWidget.tsx` and `TradingTerminal.tsx` without client memory leaks or browser thread stalls.
+
+### 12. 🧠 Daily Dynamic GNN Systemic Risk Index Pipeline
+- **Vectorized Return Dynamics**: `daily_gnn_service.py` ingests daily closing price series across 40 Nifty constituents from PostgreSQL (`STOCK_PREDICT` / `historical_stock_data`) and computes rolling 60-day percentage returns.
+- **Dynamic Cross-Asset Network**: Constructs an $N \times N$ Pearson correlation matrix and extracts 18-alpha features per asset (daily return, momentum, volatility, VaR, Sharpe).
+- **GAT Neural Contagion Evaluation**: Executes a forward pass through `MarketContagionGAT` in `gnn_engine.py` to produce authentic daily systemic risk indexes (`overall_system_risk`), individual node contagion scores, and sector vulnerabilities.
+- **Automated Startup & 24h Scheduler**: Pre-computes the daily GNN payload on application launch and refreshes on a daily schedule, serving the result through `GET /api/v1/portfolio/risk/gnn-metrics`.
+- **Streamlined Institutional Header**: Extraneous mock portfolio metrics removed from the top navigation bar, highlighting the real-time **DAILY GNN SYSTEM RISK** badge with EOD date and status indicators.
+
 ---
 
 ## 🛠️ Architecture & Tech Stack
@@ -144,17 +184,22 @@ Quantcopilot/
 ├── backend/                  # FastAPI async gateway
 │   ├── app/
 │   │   ├── routers/          # Market, F&O, Portfolio, Strategy & WebSocket routes
-│   │   ├── services/         # YahooDirectDB live engine & incremental sync
+│   │   ├── services/         # YahooDirectDB live engine, NewsScheduler, incremental sync
 │   │   ├── config.py         # Application configuration & connection URLs
 │   │   ├── database.py       # Async PostgreSQL & Redis connection pools
 │   │   ├── db_init.py        # Database schema DDL & seed data
 │   │   ├── main.py           # Application entrypoint & CORS setup
 │   │   └── schemas.py        # Pydantic response models & validation
+│   ├── tests/                # Benchmark suites & automated verification
+│   │   └── benchmark_suite.py# Execution latency & throughput benchmarking
 │   ├── init_db.sql           # PostgreSQL table definitions
 │   └── requirements.txt      # Backend dependencies
 ├── frontend/                 # Next.js 16 quantitative workstation
 │   ├── app/                  # App router (Layout, Page, CSS)
 │   ├── components/           # UI Components (Charts, StrategyLab, Heatmap, OptionChain)
+│   │   ├── trading/          # AiScanDashboard, AiUniverseAuditView, LivePortfolioLab, WatchlistAuditView
+│   │   ├── CommandPalette.tsx# Global Cmd+K quick launcher
+│   │   └── WorkstationSettingsView.tsx # Customization & telemetry configuration
 │   ├── store/                # Zustand global state (usePortfolioStore)
 │   ├── types/                # TypeScript interface definitions (Strategy, Market, F&O)
 │   └── package.json          # Frontend dependencies & scripts
@@ -163,13 +208,19 @@ Quantcopilot/
 │   ├── deep_forecaster.py    # 60-day Multi-Horizon Attention Forecaster
 │   ├── drl_policy.py         # Friction-aware Sortino DRL Trading Agent
 │   ├── gnn_engine.py         # Dynamic 60-day EWMA Graph Attention Network
+│   ├── finbert_sentiment.py  # ProsusAI FinBERT news sentiment model
+│   ├── pattern_detector.py   # Algorithmic geometric chart pattern detector
+│   ├── sebi_policy_tracker.py# Regulatory surveillance & circuit limit tracker
 │   ├── db_loader.py          # PostgreSQL & Redis SQL data access layer
 │   ├── train_models.py       # Automated SQL-fed training pipeline
 │   ├── checkpoints/          # Checkpoint model weights (.pt)
 │   ├── data_cache/           # Historical datasets & GNN topology payloads
 │   └── requirements.txt      # ML dependencies (PyTorch, jugaad-data, yfinance)
-├── decisions.md              # Architectural Decision Records (ADRs)
+├── decisions.md              # Architectural Decision Records (ADR-001 - ADR-023)
 ├── flow.md                   # Operational architecture & sequence diagrams
+├── RMMM_Document_QuantCopilot.md # Risk Mitigation, Monitoring, & Management Document
+├── generate_quickstart_docx.py # Documentation artifact exporter
+├── verify_sequence.py        # Pipeline sequencing verification script
 ├── run.ps1                   # Windows startup script
 ├── run.sh                    # Unix startup script
 └── README.md                 # Complete documentation

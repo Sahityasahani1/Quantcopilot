@@ -84,10 +84,11 @@ class TemporalAttentionForecaster(nn.Module):
         self,
         input_dim: int = 18,
         hidden_dim: int = 128,
-        horizon: int = 20,
+        horizon: int = 90,
         num_heads: int = 8,
         dropout: float = 0.1
     ):
+
         super().__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -196,7 +197,7 @@ class DeepForecasterEngine:
     """
     Inference engine for the 18-Alpha Deep Temporal Attention Forecaster.
     """
-    def __init__(self, horizon: int = 20):
+    def __init__(self, horizon: int = 90):
         self.horizon = horizon
         self.feature_names = ALPHA_FEATURE_NAMES
         
@@ -354,6 +355,107 @@ class DeepForecasterEngine:
         
         expected_drift = round(float(median_drift[-1]) * 100.0, 2)
         vol_envelope = round(float(upper_95_drift[-1] - lower_95_drift[-1]) * 100.0, 2)
+
+        # Multi-Horizon Milestones (30 Days, 60 Days, 90 Days)
+        def _get_milestone(step_idx: int, days_count: int) -> Dict[str, Any]:
+            target_step = min(step_idx, len(future_steps))
+            step_obj = future_steps[target_step - 1] if future_steps else {}
+            pred_p = step_obj.get("basePrice", current_price)
+            ret_pct = round(((pred_p - current_price) / current_price) * 100.0, 2)
+            u80 = step_obj.get("upperConfidence80", pred_p * 1.03)
+            l80 = step_obj.get("lowerConfidence80", pred_p * 0.97)
+            u95 = step_obj.get("upperConfidence95", pred_p * 1.06)
+            l95 = step_obj.get("lowerConfidence95", pred_p * 0.94)
+            spread = step_obj.get("volatility_cone_spread", round(u95 - l95, 2))
+            
+            target_ts = now_ts + days_count * 86400
+            target_dt_str = time.strftime("%d %b %Y", time.localtime(target_ts))
+            
+            stance = "BULLISH" if ret_pct > 1.0 else ("BEARISH" if ret_pct < -1.0 else "RANGE_BOUND")
+            return {
+                "horizonDays": days_count,
+                "horizon_days": days_count,
+                "targetDate": target_dt_str,
+                "target_date": target_dt_str,
+                "predictedPrice": pred_p,
+                "predicted_price": pred_p,
+                "expectedReturnPct": ret_pct,
+                "expected_return_pct": ret_pct,
+                "upper80": u80,
+                "upper_80": u80,
+                "lower80": l80,
+                "lower_80": l80,
+                "upper95": u95,
+                "upper_95": u95,
+                "lower95": l95,
+                "lower_95": l95,
+                "volatilitySpread": spread,
+                "volatility_spread": spread,
+                "stance": stance
+            }
+
+        milestone_30d = _get_milestone(30, 30)
+        milestone_60d = _get_milestone(60, 60)
+        milestone_90d = _get_milestone(90, 90)
+
+        multi_horizon_forecast = {
+            "horizon_30d": milestone_30d,
+            "horizon_60d": milestone_60d,
+            "horizon_90d": milestone_90d,
+            "horizon30Days": milestone_30d,
+            "horizon60Days": milestone_60d,
+            "horizon90Days": milestone_90d
+        }
+        
+        # User-Oriented Quantile Scenario Breakdown & Narrative
+        final_step = future_steps[-1] if future_steps else {
+            "upperConfidence95": current_price * 1.05,
+            "basePrice": current_price,
+            "lowerConfidence95": current_price * 0.95,
+            "upperConfidence80": current_price * 1.03,
+            "lowerConfidence80": current_price * 0.97
+        }
+        
+        scenario_breakdown = {
+            "bestCase": {
+                "targetPrice": final_step["upperConfidence95"],
+                "returnPct": round(((final_step["upperConfidence95"] - current_price) / current_price) * 100.0, 2),
+                "label": "Bullish Breakout Scenario (95% Quantile)"
+            },
+            "baseCase": {
+                "targetPrice": final_step["basePrice"],
+                "returnPct": round(((final_step["basePrice"] - current_price) / current_price) * 100.0, 2),
+                "label": "Expected Path (Median Drift)"
+            },
+            "worstCase": {
+                "floorPrice": final_step["lowerConfidence95"],
+                "drawdownPct": round(((final_step["lowerConfidence95"] - current_price) / current_price) * 100.0, 2),
+                "label": "Risk Invalidation Floor (95% Quantile)"
+            },
+            "horizonMilestones": {
+                "day30": milestone_30d,
+                "day60": milestone_60d,
+                "day90": milestone_90d
+            }
+        }
+        
+        top_feature_name = feature_importance_list[0]["feature"] if feature_importance_list else "Price Momentum"
+        forecast_narrative = (
+            f"The 8-head temporal attention model projects a {dominant_trend.lower()} trajectory over the next 90 days. "
+            f"30-Day Objective: ₹{milestone_30d['predictedPrice']:.2f} ({milestone_30d['expectedReturnPct']:+.2f}%), "
+            f"60-Day Milestone: ₹{milestone_60d['predictedPrice']:.2f} ({milestone_60d['expectedReturnPct']:+.2f}%), "
+            f"90-Day Target: ₹{milestone_90d['predictedPrice']:.2f} ({milestone_90d['expectedReturnPct']:+.2f}%). "
+            f"Primary alpha driver: {top_feature_name} (attention weight: {feature_importance_list[0]['importancePct']}%), "
+            f"with 90-day 80% confidence corridor bounded between ₹{milestone_90d['lower80']:.2f} and ₹{milestone_90d['upper80']:.2f}."
+        )
+        
+        invalidation_level = round(milestone_30d["lower80"], 2)
+        if dominant_trend == "BULLISH":
+            trader_takeaway = f"Favor long accumulation while price respects the 30-day ₹{invalidation_level:.2f} support band. Project intermediate profit targets at ₹{milestone_30d['predictedPrice']:.2f} (30d), ₹{milestone_60d['predictedPrice']:.2f} (60d), and ₹{milestone_90d['predictedPrice']:.2f} (90d)."
+        elif dominant_trend == "BEARISH":
+            trader_takeaway = f"Maintain defensive stance or tactical short hedges. Invalidation occurs on a breakout above ₹{milestone_30d['upper80']:.2f}. Downside projections target ₹{milestone_30d['predictedPrice']:.2f} (30d) and ₹{milestone_90d['predictedPrice']:.2f} (90d)."
+        else:
+            trader_takeaway = f"Expect range-bound cyclical oscillation inside the ₹{milestone_30d['lower80']:.2f} – ₹{milestone_30d['upper80']:.2f} corridor. Exploit boundary reversions."
         
         return {
             "symbol": symbol,
@@ -368,13 +470,27 @@ class DeepForecasterEngine:
             "expectedDriftPct": expected_drift,
             "volatilityEnvelopePct": max(1.0, vol_envelope),
             "trajectory": future_steps,
+            "multiHorizonForecast": multi_horizon_forecast,
+            "multi_horizon_forecast": multi_horizon_forecast,
+            "horizon_30d": milestone_30d,
+            "horizon_60d": milestone_60d,
+            "horizon_90d": milestone_90d,
             "featureImportance": feature_importance_list[:7],
             "feature_importance": feature_importance_map,
             "recentTemporalAttention": recent_attention,
             "temporal_attention_highlights": temporal_highlights,
+            "scenarioBreakdown": scenario_breakdown,
+            "scenario_breakdown": scenario_breakdown,
+            "forecastNarrative": forecast_narrative,
+            "forecast_narrative": forecast_narrative,
+            "invalidationLevel": invalidation_level,
+            "invalidation_level": invalidation_level,
+            "traderTakeaway": trader_takeaway,
+            "trader_takeaway": trader_takeaway,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }
 
-deep_forecaster = DeepForecasterEngine(horizon=20)
+deep_forecaster = DeepForecasterEngine(horizon=90)
 forecaster_engine = deep_forecaster
+
 

@@ -1,6 +1,8 @@
+import os
 import docx
 
-doc = docx.Document("QuantCopilot AI Research Paper.docx")
+doc_filename = "QuantCopilot_AI_Research_Paper_Final.docx" if os.path.exists("QuantCopilot_AI_Research_Paper_Final.docx") else "QuantCopilot AI Research Paper.docx"
+doc = docx.Document(doc_filename)
 print("=== STRICT FIGURE SEQUENCE & CONTENT AUDIT ===")
 
 fig_records = []

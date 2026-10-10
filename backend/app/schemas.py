@@ -68,6 +68,9 @@ class GNNRiskPayloadSchema(BaseModel):
     adjacency_matrix: List[List[float]]
     sector_vulnerability: Optional[List[SectorVulnerabilitySchema]] = None
     high_risk_nodes: Optional[List[str]] = None
+    daily_date: Optional[str] = None
+    contagion_status: Optional[str] = None
+    updated_at: Optional[str] = None
 
 class GNNShockRequestSchema(BaseModel):
     symbol: str
@@ -302,6 +305,9 @@ class GoalPredictionResponseSchema(BaseModel):
     featureImportance: Optional[List[Dict[str, Any]]] = None
     neuralTrend: Optional[str] = None
     neuralConfidence: Optional[float] = None
+    feasibilityDiagnosis: Optional[str] = None
+    safetyChecklist: Optional[List[Dict[str, str]]] = None
+    traderActionSummary: Optional[str] = None
 
 # ==================== DEEP LEARNING SCHEMAS ====================
 
@@ -333,7 +339,16 @@ class DeepForecastResponseSchema(BaseModel):
     trajectory: List[DeepForecastPointSchema]
     featureImportance: List[FeatureAttentionItemSchema]
     recentTemporalAttention: List[float]
+    scenarioBreakdown: Optional[Dict[str, Any]] = None
+    multiHorizonForecast: Optional[Dict[str, Any]] = None
+    horizon_30d: Optional[Dict[str, Any]] = None
+    horizon_60d: Optional[Dict[str, Any]] = None
+    horizon_90d: Optional[Dict[str, Any]] = None
+    forecastNarrative: Optional[str] = None
+    invalidationLevel: Optional[float] = None
+    traderTakeaway: Optional[str] = None
     timestamp: str
+
 
 class DRLActionDistributionSchema(BaseModel):
     action: str
@@ -358,6 +373,10 @@ class DRLAgentSignalResponseSchema(BaseModel):
     suggestedTarget: Optional[float] = None
     recommendedQuantity: Optional[int] = None
     sizingFactor: Optional[float] = None
+    aiReasoning: Optional[str] = None
+    userPlaybook: Optional[Dict[str, Any]] = None
+    metricExplanations: Optional[Dict[str, str]] = None
+    confidenceBreakdown: Optional[Dict[str, float]] = None
     timestamp: str
 
 class DRLEquityPointSchema(BaseModel):
@@ -466,6 +485,8 @@ class DetectedChartPatternSchema(BaseModel):
     status: str
     pivots: List[PatternPivotSchema]
     description: str
+    actionable_guidance: Optional[str] = None
+    actionableGuidance: Optional[str] = None
 
 
 class FinbertNewsItemSchema(BaseModel):
@@ -490,6 +511,14 @@ class FinbertOverallSentimentSchema(BaseModel):
     neutral_count: int
     bullish_ratio: float
     sentiment_trend: str
+    market_narrative: Optional[str] = None
+    marketNarrative: Optional[str] = None
+    bullish_catalysts: Optional[List[str]] = None
+    bullishCatalysts: Optional[List[str]] = None
+    caution_flags: Optional[List[str]] = None
+    cautionFlags: Optional[List[str]] = None
+    trader_action_recommendation: Optional[str] = None
+    traderActionRecommendation: Optional[str] = None
 
 
 class SebiPolicyItemSchema(BaseModel):
@@ -532,6 +561,14 @@ class TickerDataSummarySchema(BaseModel):
     beta: Optional[float] = None
     dominant_trend: str
     executive_summary: str
+    copilot_verdict: Optional[Dict[str, Any]] = None
+    copilotVerdict: Optional[Dict[str, Any]] = None
+    key_catalysts: Optional[List[str]] = None
+    keyCatalysts: Optional[List[str]] = None
+    key_risks: Optional[List[str]] = None
+    keyRisks: Optional[List[str]] = None
+    action_advice: Optional[str] = None
+    actionAdvice: Optional[str] = None
 
 
 class FuturePriceForecastPointSchema(BaseModel):
@@ -642,6 +679,14 @@ class AssetAuditItemSchema(BaseModel):
     govt_policy: AssetGovtPolicyAuditSchema
     future_prediction: AssetFuturePredictionSchema
     executive_verdict: str
+    investor_fit: Optional[str] = None
+    investorFit: Optional[str] = None
+    risk_grade: Optional[str] = None
+    riskGrade: Optional[str] = None
+    why_quantcopilot_likes: Optional[str] = None
+    whyQuantCopilotLikes: Optional[str] = None
+    actionable_playbook: Optional[str] = None
+    actionablePlaybook: Optional[str] = None
     timestamp: str
 
 
@@ -687,6 +732,52 @@ class BatchLiveQuotesResponseSchema(BaseModel):
     timestamp: str
     source: str = "yfinance"
     quotes: Dict[str, LiveYfinanceQuoteSchema]
+
+
+class CustomerProfileSchema(BaseModel):
+    customer_id: str
+    name: str
+    email: str
+    account_tier: str = "PRO_QUANT"
+    cash_balance: float = 500000.0
+    created_at: Optional[str] = None
+    last_login: Optional[str] = None
+    positions_count: Optional[int] = 0
+    total_equity: Optional[float] = 500000.0
+    auth_token: Optional[str] = None
+
+
+class CustomerLoginRequestSchema(BaseModel):
+    identifier: str
+    password: str
+
+
+class CustomerRegisterRequestSchema(BaseModel):
+    name: str
+    email: str
+    password: str
+    initial_capital: Optional[float] = 500000.0
+    account_tier: Optional[str] = "PRO_QUANT"
+
+
+class CustomerAuthResponseSchema(BaseModel):
+    status: str
+    message: str
+    auth_token: Optional[str] = None
+    customer: Optional[CustomerProfileSchema] = None
+    portfolio: Optional[PortfolioSummarySchema] = None
+    live_quotes: Optional[Dict[str, LiveYfinanceQuoteSchema]] = None
+    live_synced: bool = False
+    synced_at: Optional[str] = None
+
+
+class CustomerLivePortfolioResponseSchema(BaseModel):
+    customer: CustomerProfileSchema
+    summary: PortfolioSummarySchema
+    live_quotes: Dict[str, LiveYfinanceQuoteSchema]
+    synced_at: str
+    source: str = "yfinance"
+
 
 
 

@@ -20,11 +20,18 @@ import {
   AlertCircle,
   FlaskConical,
   Zap,
-  Globe
+  Globe,
+  User,
+  Save,
+  DownloadCloud,
+  FileSpreadsheet
 } from "lucide-react";
 import { LiveYfinanceQuote, LabPortfolioPosition } from "../../types";
 import { getApiBaseUrl } from "../../lib/api";
 import { LiveTickPrice } from "../common/LiveTickPrice";
+import { usePortfolioStore } from "../../store/usePortfolioStore";
+import { LivePortfolioCsvModal } from "./LivePortfolioCsvModal";
+
 
 const POPULAR_NSE_TICKERS = [
   { symbol: "RELIANCE", name: "Reliance Industries", sector: "Energy" },
@@ -48,9 +55,12 @@ const POPULAR_NSE_TICKERS = [
 const LOCAL_STORAGE_KEY = "quantcopilot_lab_portfolio_v1";
 
 export const LivePortfolioLab: React.FC = () => {
+  const { currentCustomer, portfolio, setIsCustomerLoginModalOpen, importPortfolioPositions, indianTickers } = usePortfolioStore();
+
   // Positions in custom lab
   const [positions, setPositions] = useState<LabPortfolioPosition[]>([]);
   const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
+
 
   // Live quotes map fetched from yfinance
   const [liveQuotes, setLiveQuotes] = useState<Record<string, LiveYfinanceQuote>>({});
@@ -68,6 +78,7 @@ export const LivePortfolioLab: React.FC = () => {
   const [entryPrice, setEntryPrice] = useState<number>(0);
   const [side, setSide] = useState<"LONG" | "SHORT">("LONG");
   const [addSuccessMessage, setAddSuccessMessage] = useState<string | null>(null);
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState<boolean>(false);
 
   // Auto-refresh timer
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(30); // seconds
@@ -180,8 +191,8 @@ export const LivePortfolioLab: React.FC = () => {
   const handleAddPosition = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedSymbol || quantity <= 0) return;
-
-    const currentPriceToUse = entryPrice > 0 ? entryPrice : (activePickerQuote?.price || 1000);
+    const fallbackPrice = indianTickers[selectedSymbol]?.price || activePickerQuote?.price || 2400;
+    const currentPriceToUse = entryPrice > 0 ? entryPrice : fallbackPrice;
     const matchedStock = POPULAR_NSE_TICKERS.find((t) => t.symbol === selectedSymbol);
 
     const newPos: LabPortfolioPosition = {
@@ -245,11 +256,49 @@ export const LivePortfolioLab: React.FC = () => {
     setPositions(samples);
   };
 
+  // Load positions from active Customer Account
+  const handleLoadCustomerPositions = () => {
+    if (portfolio.positions.length === 0) {
+      setAddSuccessMessage("Active customer portfolio has no positions. Add positions below or switch account.");
+      setTimeout(() => setAddSuccessMessage(null), 3000);
+      return;
+    }
+    const loaded: LabPortfolioPosition[] = portfolio.positions.map((p, idx) => ({
+      id: `cust_${p.symbol}_${idx}`,
+      symbol: p.symbol,
+      company_name: p.symbol,
+      exchange: "NSE",
+      quantity: p.quantity,
+      entry_price: p.entry_price,
+      side: p.side,
+      added_at: new Date().toISOString()
+    }));
+    setPositions(loaded);
+    setAddSuccessMessage(`Loaded ${loaded.length} positions from ${currentCustomer?.name || 'Customer'} portfolio.`);
+    setTimeout(() => setAddSuccessMessage(null), 3000);
+  };
+
+  // Save current Lab positions into persistent Customer Database
+  const handleSaveToCustomerAccount = () => {
+    if (positions.length === 0) return;
+    const posInputs = positions.map(p => ({
+      symbol: p.symbol,
+      quantity: p.quantity,
+      entry_price: p.entry_price,
+      side: p.side
+    }));
+    importPortfolioPositions(posInputs);
+    setAddSuccessMessage(`Saved ${positions.length} positions to ${currentCustomer?.name || 'Customer'} custom database!`);
+    setTimeout(() => setAddSuccessMessage(null), 3000);
+  };
+
+
   // Compute portfolio valuation with live quotes
   const portfolioMetrics = useMemo(() => {
     let totalInvested = 0;
     let totalCurrent = 0;
     let totalDayChange = 0;
+    let totalUnrealizedPnl = 0;
 
     const computedPositions = positions.map((p) => {
       const quote = liveQuotes[p.symbol];
@@ -266,6 +315,7 @@ export const LivePortfolioLab: React.FC = () => {
       totalInvested += investedValue;
       totalCurrent += currentValue;
       totalDayChange += dayChangeVal;
+      totalUnrealizedPnl += unrealizedPnl;
 
       return {
         ...p,
@@ -284,7 +334,7 @@ export const LivePortfolioLab: React.FC = () => {
       };
     });
 
-    const netUnrealizedPnl = totalCurrent - totalInvested;
+    const netUnrealizedPnl = totalUnrealizedPnl;
     const netReturnPct = totalInvested > 0 ? (netUnrealizedPnl / totalInvested) * 100 : 0;
 
     return {
@@ -296,6 +346,84 @@ export const LivePortfolioLab: React.FC = () => {
       positionsWithLive: computedPositions
     };
   }, [positions, liveQuotes]);
+
+  // Handle import from CSV modal
+  const handleImportFromCsv = (importedList: LabPortfolioPosition[], mode: "replace" | "append") => {
+    if (importedList.length === 0) return;
+
+    if (mode === "replace") {
+      setPositions(importedList);
+      fetchPortfolioBatchQuotes(importedList);
+      setAddSuccessMessage(`Imported ${importedList.length} positions from CSV! Streaming live Yahoo Finance quotes...`);
+    } else {
+      // Append mode: merge into existing positions
+      setPositions((prev) => {
+        const updated = [...prev];
+        for (const item of importedList) {
+          const existingIdx = updated.findIndex((p) => p.symbol === item.symbol && p.side === item.side);
+          if (existingIdx >= 0) {
+            const existing = updated[existingIdx];
+            const totalQty = existing.quantity + item.quantity;
+            const avgPrice = Number(
+              (((existing.entry_price * existing.quantity) + (item.entry_price * item.quantity)) / totalQty).toFixed(2)
+            );
+            updated[existingIdx] = { ...existing, quantity: totalQty, entry_price: avgPrice };
+          } else {
+            updated.unshift(item);
+          }
+        }
+        return updated;
+      });
+      fetchPortfolioBatchQuotes([...importedList, ...positions]);
+      setAddSuccessMessage(`Appended ${importedList.length} positions from CSV! Streaming live Yahoo Finance quotes...`);
+    }
+
+    setTimeout(() => setAddSuccessMessage(null), 4000);
+  };
+
+  // Export current positions to CSV
+  const handleExportToCsv = () => {
+    if (positions.length === 0) return;
+
+    const headers = [
+      "symbol",
+      "company_name",
+      "exchange",
+      "side",
+      "quantity",
+      "entry_price",
+      "live_ltp",
+      "invested_value",
+      "current_value",
+      "unrealized_pnl",
+      "unrealized_pnl_pct",
+      "added_at"
+    ];
+    
+    const rows = portfolioMetrics.positionsWithLive.map(p => [
+      p.symbol,
+      `"${(p.company_name || p.symbol).replace(/"/g, '""')}"`,
+      p.exchange || "NSE",
+      p.side,
+      p.quantity,
+      p.entry_price,
+      p.livePrice,
+      p.investedValue.toFixed(2),
+      p.currentValue.toFixed(2),
+      p.unrealizedPnl.toFixed(2),
+      p.pnlPct.toFixed(2),
+      p.added_at
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `quantcopilot_live_portfolio_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Filtered popular tickers for search
   const filteredTickers = useMemo(() => {
@@ -355,6 +483,44 @@ export const LivePortfolioLab: React.FC = () => {
           >
             <RefreshCw className={`h-3 w-3 ${isQuotesLoading ? "animate-spin text-[#159570]" : "text-[#A7ADA8]"}`} />
             <span>REFRESH ({countdown}s)</span>
+          </button>
+
+          <button
+            onClick={() => setIsCsvModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-sm bg-[#159570] hover:bg-[#0E6B50] text-[#F2F0E8] font-sans font-medium text-xs transition-colors shadow-sm"
+            title="Import stock positions from CSV or Excel file and inspect row data"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span>IMPORT CSV</span>
+          </button>
+
+          <button
+            onClick={handleExportToCsv}
+            disabled={positions.length === 0}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-sm bg-[#161C19] hover:bg-[#1B2420] text-[#F2F0E8] border border-white/[0.065] font-sans font-medium text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Export active portfolio positions and live MTM metrics to CSV file"
+          >
+            <Download className="h-3 w-3 text-[#159570]" />
+            <span>EXPORT CSV</span>
+          </button>
+
+          <button
+            onClick={handleLoadCustomerPositions}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-sm bg-[#161C19] hover:bg-[#1B2420] text-[#F2F0E8] border border-white/[0.065] font-sans font-medium text-xs transition-colors"
+            title="Load holdings from active customer database profile"
+          >
+            <DownloadCloud className="h-3 w-3 text-[#159570]" />
+            <span>LOAD FROM {currentCustomer ? currentCustomer.name.split(" ")[0].toUpperCase() : "CUSTOMER"}</span>
+          </button>
+
+          <button
+            onClick={handleSaveToCustomerAccount}
+            disabled={positions.length === 0}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-sm bg-[#159570]/15 hover:bg-[#159570]/25 text-[#42A77A] border border-[#159570]/30 font-sans font-medium text-xs transition-colors disabled:opacity-40"
+            title="Save current lab positions to customer database"
+          >
+            <Save className="h-3 w-3" />
+            <span>SAVE TO DB</span>
           </button>
 
           <button
@@ -737,6 +903,24 @@ export const LivePortfolioLab: React.FC = () => {
               </div>
 
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsCsvModalOpen(true)}
+                  className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-sm bg-[#159570]/15 hover:bg-[#159570]/25 text-[#42A77A] border border-[#159570]/30 text-xs font-sans font-medium transition-colors"
+                  title="Import CSV or Excel file and inspect row data"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  <span>Import CSV</span>
+                </button>
+                {positions.length > 0 && (
+                  <button
+                    onClick={handleExportToCsv}
+                    className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-sm bg-[#161C19] hover:bg-[#1B2420] text-[#A7ADA8] hover:text-[#F2F0E8] border border-white/[0.065] text-xs font-sans font-medium transition-colors"
+                    title="Export active positions to CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                )}
                 {positions.length === 0 && (
                   <button
                     onClick={handleLoadSamplePositions}
@@ -768,16 +952,23 @@ export const LivePortfolioLab: React.FC = () => {
                     EMPTY LAB SANDBOX - CLEAN SLATE
                   </h4>
                   <p className="text-xs text-[#A7ADA8] font-sans max-w-md mx-auto">
-                    Pre-added mock positions have been removed. Choose stocks on the left at their live current market value from Yahoo Finance to build your custom portfolio.
+                    Pre-added mock positions have been removed. Choose stocks on the left at their live current market value from Yahoo Finance, or upload a CSV file to build your custom portfolio.
                   </p>
                 </div>
-                <div className="pt-2 flex justify-center space-x-3">
+                <div className="pt-2 flex flex-wrap justify-center gap-2.5">
+                  <button
+                    onClick={() => setIsCsvModalOpen(true)}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-sm bg-[#159570] hover:bg-[#0E6B50] text-[#F2F0E8] text-xs font-medium font-sans transition-colors shadow-sm"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                    <span>Import Portfolio CSV / Excel</span>
+                  </button>
                   <button
                     onClick={() => {
                       setSelectedSymbol("RELIANCE");
                       fetchPickerQuote("RELIANCE");
                     }}
-                    className="px-3.5 py-1.5 rounded-sm bg-[#159570] hover:bg-[#0E6B50] text-[#F2F0E8] text-xs font-medium font-sans transition-colors"
+                    className="px-3.5 py-1.5 rounded-sm bg-[#161C19] hover:bg-[#1B2420] text-[#F2F0E8] border border-white/[0.08] text-xs font-medium font-sans transition-colors"
                   >
                     Choose RELIANCE (₹{activePickerQuote?.price || 1186})
                   </button>
@@ -984,6 +1175,14 @@ export const LivePortfolioLab: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Interactive CSV / Excel Upload & Data Inspection Modal */}
+      <LivePortfolioCsvModal
+        isOpen={isCsvModalOpen}
+        onClose={() => setIsCsvModalOpen(false)}
+        onImportPositions={handleImportFromCsv}
+        currentPositionsCount={positions.length}
+      />
     </div>
   );
 };

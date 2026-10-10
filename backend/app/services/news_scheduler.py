@@ -8,17 +8,20 @@ import asyncio
 import time
 from typing import List, Dict, Any, Optional
 
+import sys, os
+base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if base_path not in sys.path:
+    sys.path.append(base_path)
+
 try:
     from ml_service.finbert_sentiment import finbert_engine
-except ImportError:
-    import sys, os
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
-    from ml_service.finbert_sentiment import finbert_engine
+except Exception as e:
+    finbert_engine = None
 
 try:
     from ml_service.sebi_policy_tracker import sebi_policy_tracker
-except ImportError:
-    from ml_service.sebi_policy_tracker import sebi_policy_tracker
+except Exception as e:
+    sebi_policy_tracker = None
 
 
 TRACKED_TICKERS = [

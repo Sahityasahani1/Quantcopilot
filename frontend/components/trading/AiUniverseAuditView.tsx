@@ -16,7 +16,10 @@ import {
   AlertTriangle,
   BarChart3,
   Search,
-  X
+  X,
+  Lightbulb,
+  CheckCircle2,
+  Target
 } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
 
@@ -484,9 +487,42 @@ export const AiUniverseAuditView: React.FC<AiUniverseAuditViewProps> = ({ onOpen
                         </div>
                       </div>
 
-                      {/* Executive Verdict Quote */}
-                      <div className="p-2.5 rounded-sm bg-[#0C100F] border border-white/[0.04] text-xs text-[#A7ADA8] leading-relaxed italic font-sans">
-                        &quot;{item.executive_verdict}&quot;
+                      {/* Investor Fit, Risk Grade & Quant Copilot Synthesis */}
+                      <div className="space-y-2 mt-3.5">
+                        {/* Investor Fit & Risk Grade Pill Strip */}
+                        <div className="flex items-center justify-between text-[10px] font-mono">
+                          <span className="px-2 py-0.5 rounded-sm bg-[#161C19] text-[#A7ADA8] border border-white/[0.065]">
+                            Fit: <strong className="text-[#F2F0E8] font-sans">{item.investorFit || (item.asset_type === "STOCK" ? "Active Momentum Traders" : "Passive Index Core")}</strong>
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-sm font-semibold border ${
+                            item.riskGrade === "LOW_RISK" 
+                              ? "bg-[#159570]/10 text-[#42A77A] border-[#159570]/30" 
+                              : item.riskGrade === "SPECULATIVE"
+                              ? "bg-[#C45D62]/10 text-[#C45D62] border-[#C45D62]/30"
+                              : "bg-[#C8A96B]/10 text-[#C8A96B] border-[#C8A96B]/30"
+                          }`}>
+                            Risk: {item.riskGrade || "MODERATE"}
+                          </span>
+                        </div>
+
+                        {/* Executive Verdict Quote */}
+                        <div className="p-2.5 rounded-sm bg-[#0C100F] border border-white/[0.04] text-xs text-[#A7ADA8] leading-relaxed font-sans space-y-1">
+                          <div className="text-[#D8DCDA] italic">&quot;{item.executive_verdict}&quot;</div>
+                          {item.whyQuantCopilotLikes && (
+                            <div className="text-[11px] text-[#42A77A] not-italic font-medium pt-1 border-t border-white/[0.04] flex items-start gap-1">
+                              <Sparkles className="h-3 w-3 shrink-0 mt-0.5" />
+                              <span>{item.whyQuantCopilotLikes}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actionable Playbook Callout */}
+                        {item.actionablePlaybook && (
+                          <div className="p-2 rounded-sm bg-[#159570]/10 border border-[#159570]/25 text-[11px] text-[#F2F0E8] flex items-start gap-1.5 font-sans">
+                            <Lightbulb className="h-3.5 w-3.5 text-[#C8A96B] shrink-0 mt-0.5" />
+                            <span><strong>Playbook:</strong> {item.actionablePlaybook}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -680,6 +716,47 @@ export const AiUniverseAuditView: React.FC<AiUniverseAuditViewProps> = ({ onOpen
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Quant Copilot Verdict & Playbook in Modal */}
+            <div className="bg-[#0C100F] border border-[#159570]/30 rounded-sm p-4 space-y-3 font-sans">
+              <div className="flex items-center justify-between border-b border-white/[0.065] pb-2">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="h-4 w-4 text-[#159570]" />
+                  <span className="text-xs font-semibold text-[#F2F0E8] uppercase tracking-wider">
+                    Quant Copilot Executive Synthesis &amp; Trade Playbook
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs font-mono">
+                  <span className="text-[#A7ADA8]">Fit: <strong className="text-[#F2F0E8]">{selectedItem.investorFit || "All Investors"}</strong></span>
+                  <span className="text-[#68716C]">|</span>
+                  <span className="text-[#A7ADA8]">Risk: <strong className="text-[#C8A96B]">{selectedItem.riskGrade || "MODERATE"}</strong></span>
+                </div>
+              </div>
+
+              <div className="text-xs text-[#D8DCDA] leading-relaxed italic bg-[#111614] p-3 rounded-sm border border-white/[0.04]">
+                &quot;{selectedItem.executive_verdict}&quot;
+              </div>
+
+              {selectedItem.whyQuantCopilotLikes && (
+                <div className="text-xs text-[#42A77A] bg-[#159570]/10 p-2.5 rounded-sm border border-[#159570]/25 flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-[#42A77A]" />
+                  <div>
+                    <strong className="block text-[11px] uppercase tracking-wider text-[#42A77A]">Why Quant Copilot Likes This Asset:</strong>
+                    <span className="text-[#F2F0E8] leading-tight">{selectedItem.whyQuantCopilotLikes}</span>
+                  </div>
+                </div>
+              )}
+
+              {selectedItem.actionablePlaybook && (
+                <div className="text-xs text-[#F2F0E8] bg-[#111614] p-2.5 rounded-sm border border-white/[0.06] flex items-start gap-2">
+                  <Lightbulb className="h-4 w-4 shrink-0 mt-0.5 text-[#C8A96B]" />
+                  <div>
+                    <strong className="block text-[11px] uppercase tracking-wider text-[#C8A96B]">Actionable Execution Playbook:</strong>
+                    <span className="text-[#D8DCDA] leading-tight">{selectedItem.actionablePlaybook}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 14-Day Forward Trajectory Curve Points */}

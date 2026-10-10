@@ -8,10 +8,24 @@ import { TradingTerminal } from "../components/fno";
 import { StrategyLab } from "../components/StrategyLab";
 import { AddPositionModal } from "../components/AddPositionModal";
 import { PortfolioImportModal } from "../components/PortfolioImportModal";
-import { ShieldCheck, Zap, Plus, Upload, Trash2, ArrowUpRight, ArrowDownRight, Layers, Activity } from "lucide-react";
+import { 
+  ShieldCheck, 
+  Zap, 
+  Plus, 
+  Upload, 
+  Trash2, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Layers, 
+  Activity, 
+  User, 
+  RefreshCw 
+} from "lucide-react";
 import { AiUniverseAuditView } from "../components/trading/AiUniverseAuditView";
 import { LivePortfolioLab } from "../components/trading/LivePortfolioLab";
 import { WatchlistAuditView } from "../components/trading/WatchlistAuditView";
+import { SebiSurveillanceView } from "../components/trading/SebiSurveillanceView";
+import { AlphaForecasterView } from "../components/trading/AlphaForecasterView";
 import { WorkstationSettingsView } from "../components/WorkstationSettingsView";
 import { LiveTickPrice } from "../components/common/LiveTickPrice";
 
@@ -24,7 +38,12 @@ export default function Home() {
     setIsAddPositionOpen, 
     setIsImportModalOpen, 
     clearPortfolio, 
-    deletePosition 
+    deletePosition,
+    currentCustomer,
+    setIsCustomerLoginModalOpen,
+    refreshCustomerPortfolioLive,
+    isLiveSyncing,
+    lastLiveSyncTime
   } = usePortfolioStore();
 
   if (activeTab === "watchlist") {
@@ -52,6 +71,22 @@ export default function Home() {
             setActiveTab("fno_terminal");
           }} 
         />
+      </div>
+    );
+  }
+
+  if (activeTab === "sebi_surveillance") {
+    return (
+      <div key="sebi_surveillance" className="w-full max-w-[1600px] mx-auto animate-fade-in-up">
+        <SebiSurveillanceView />
+      </div>
+    );
+  }
+
+  if (activeTab === "alpha_forecaster") {
+    return (
+      <div key="alpha_forecaster" className="w-full max-w-[1600px] mx-auto animate-fade-in-up">
+        <AlphaForecasterView />
       </div>
     );
   }
@@ -104,24 +139,24 @@ export default function Home() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.065] pb-4">
         <div>
           <div className="text-[10px] font-mono text-[#159570] font-semibold tracking-wider uppercase mb-1">
-            PORTFOLIO &amp; RISK DESK
+            CUSTOMER PORTFOLIO &amp; RISK DESK
           </div>
           <h2 className="text-xl md:text-2xl font-bold font-sans tracking-tight text-[#F2F0E8]">
             QUANTITATIVE TERMINAL OVERVIEW
           </h2>
           <p className="text-xs text-[#A7ADA8] font-sans mt-0.5">
-            Real-time portfolio delta, GNN contagion vectors, and systemic risk engine telemetry.
+            Real-time portfolio delta, GNN contagion vectors, and live Yahoo Finance mark-to-market engine.
           </p>
         </div>
 
         <div className="flex items-center space-x-2.5 text-xs font-mono">
           <div className="flex items-center space-x-2 bg-[#111614] border border-white/[0.065] rounded-sm px-2.5 py-1.5 shadow-sm">
             <Zap className="h-3.5 w-3.5 text-[#159570]" />
-            <span className="text-[#A7ADA8] font-medium text-[11px]">FEED: WEBSOCKET ACTIVE</span>
+            <span className="text-[#A7ADA8] font-medium text-[11px]">FEED: YAHOO FINANCE LIVE</span>
           </div>
           <div className="flex items-center space-x-2 bg-[#111614] border border-white/[0.065] rounded-sm px-2.5 py-1.5 shadow-sm">
             <ShieldCheck className="h-3.5 w-3.5 text-[#159570]" />
-            <span className="text-[#A7ADA8] font-medium text-[11px]">GRL RISK ENGINE: ENGAGED</span>
+            <span className="text-[#A7ADA8] font-medium text-[11px]">CUSTOM DB: CONNECTED</span>
           </div>
         </div>
       </div>
@@ -129,18 +164,78 @@ export default function Home() {
       {/* Indian Market Feed & Benchmark Index Cards */}
       <IndianMarketWidget />
 
-      {/* Institutional Portfolio Holdings Table */}
+      {/* Institutional Portfolio Holdings Table with Customer Banner */}
       <div className="bg-[#111614] border border-white/[0.065] rounded-sm p-4 md:p-5 shadow-sm space-y-4">
+        
+        {/* Customer Account & Live Yahoo Finance Synchronization Banner */}
+        <div className="bg-[#0C100F] border border-white/[0.065] rounded-sm p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="h-8 w-8 rounded-full bg-[#159570]/15 border border-[#159570]/30 flex items-center justify-center font-bold text-xs text-[#159570]">
+              {currentCustomer ? currentCustomer.name.charAt(0) : "U"}
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-semibold text-[#F2F0E8]">
+                  {currentCustomer ? currentCustomer.name : "Sahitya Sharma"}
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#161C19] text-[#C8A96B] border border-white/[0.065]">
+                  {currentCustomer ? currentCustomer.account_tier : "PRO_QUANT"}
+                </span>
+                <span className="text-[10px] text-[#68716C] font-mono hidden sm:inline">
+                  ID: {currentCustomer ? currentCustomer.customer_id : "cust_sahitya"}
+                </span>
+              </div>
+              <div className="text-[11px] text-[#A7ADA8] font-mono flex items-center space-x-2 mt-0.5">
+                <span>Cash: ₹{Number(currentCustomer?.cash_balance || 500000).toLocaleString("en-IN")}</span>
+                <span>•</span>
+                <span>Net Equity: ₹{Number(portfolio.total_equity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 bg-[#111614] border border-[#159570]/30 px-2.5 py-1 rounded text-[11px] font-mono text-[#159570]">
+              <span className="flex h-1.5 w-1.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#159570] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#159570]"></span>
+              </span>
+              <span>YF LIVE FEED</span>
+              {lastLiveSyncTime && (
+                <span className="text-[#A7ADA8] text-[10px] hidden sm:inline">({lastLiveSyncTime})</span>
+              )}
+            </div>
+
+            <button
+              onClick={() => refreshCustomerPortfolioLive()}
+              disabled={isLiveSyncing}
+              className="flex items-center space-x-1.5 bg-[#161C19] hover:bg-[#1F2723] text-[#F2F0E8] border border-white/[0.08] px-2.5 py-1 rounded text-xs font-sans transition-all"
+              title="Fetch fresh live quotes from Yahoo Finance"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLiveSyncing ? "animate-spin text-[#159570]" : "text-[#A7ADA8]"}`} />
+              <span>Refresh Quotes</span>
+            </button>
+
+            <button
+              onClick={() => setIsCustomerLoginModalOpen(true)}
+              className="flex items-center space-x-1.5 bg-[#159570]/15 hover:bg-[#159570]/25 text-[#42A77A] border border-[#159570]/30 px-2.5 py-1 rounded text-xs font-sans transition-all"
+            >
+              <User className="h-3 w-3" />
+              <span>Switch Account</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Section Title & Action Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.065] pb-3">
           <div>
             <h3 className="text-sm font-semibold font-sans text-[#F2F0E8] tracking-tight flex items-center space-x-2">
-              <span>ACTIVE PORTFOLIO POSITIONS &amp; LEVERAGE</span>
+              <span>CUSTOMER PORTFOLIO POSITIONS &amp; LEVERAGE</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#161C19] text-[#A7ADA8] border border-white/[0.065]">
                 {portfolio.positions.length} ACTIVE
               </span>
             </h3>
             <p className="text-xs text-[#A7ADA8] font-sans mt-0.5">
-              Mark-to-market valuations and net exposure tracked in real-time.
+              Live mark-to-market valuations and net exposure updated in real-time from Yahoo Finance.
             </p>
           </div>
 
@@ -162,7 +257,7 @@ export default function Home() {
             {portfolio.positions.length > 0 && (
               <button
                 onClick={() => {
-                  if (confirm("Delete entire portfolio and remove all positions?")) {
+                  if (confirm("Delete entire customer portfolio and remove all positions?")) {
                     clearPortfolio();
                   }
                 }}
@@ -184,7 +279,7 @@ export default function Home() {
                 <th className="py-2.5 px-3 font-semibold">Side</th>
                 <th className="py-2.5 px-3 text-right font-semibold">Quantity</th>
                 <th className="py-2.5 px-3 text-right font-semibold">Entry Price</th>
-                <th className="py-2.5 px-3 text-right font-semibold">Mark Price</th>
+                <th className="py-2.5 px-3 text-right font-semibold">Mark Price (YF)</th>
                 <th className="py-2.5 px-3 text-right font-semibold">Leverage</th>
                 <th className="py-2.5 px-4 text-right font-semibold">Unrealized P&amp;L</th>
                 <th className="py-2.5 px-3 text-center w-10"></th>
@@ -254,20 +349,20 @@ export default function Home() {
                         <Layers className="h-5 w-5" />
                       </div>
                       <p className="text-[#F2F0E8] font-medium">
-                        Your portfolio is empty. No pre-fed positions are loaded.
+                        This customer&apos;s portfolio is empty. Add a position or select an account.
                       </p>
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => setIsAddPositionOpen(true)}
                           className="px-3.5 py-1.5 rounded-sm bg-[#159570] hover:bg-[#0E6B50] text-[#F2F0E8] font-medium text-xs transition-colors shadow-sm"
                         >
-                          + Create Position
+                          + Add Position
                         </button>
                         <button
-                          onClick={() => setActiveTab("portfolio_lab")}
+                          onClick={() => setIsCustomerLoginModalOpen(true)}
                           className="px-3.5 py-1.5 rounded-sm bg-[#161C19] hover:bg-[#1B2420] text-[#A7ADA8] hover:text-[#F2F0E8] border border-white/[0.065] font-medium text-xs transition-colors"
                         >
-                          Open Live Portfolio Lab
+                          Switch Account
                         </button>
                       </div>
                     </div>

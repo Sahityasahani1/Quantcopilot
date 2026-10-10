@@ -262,11 +262,13 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
     let name = "Double Bottom";
     let breakoutType: "BULLISH" | "BEARISH" = "BULLISH";
     let color = "#10b981";
+    let actionableGuidance = "";
 
     if (patternType === "PATTERN_DOUBLE_BOTTOM") {
       name = "Double Bottom (W)";
       breakoutType = "BULLISH";
       color = "#10b981";
+      actionableGuidance = "Enter on neckline break; stop below trough 2";
       points = [
         { x: px - 80, y: py - 40 },
         { x: px - 40, y: py + 30 },
@@ -279,6 +281,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       name = "Double Top (M)";
       breakoutType = "BEARISH";
       color = "#f43f5e";
+      actionableGuidance = "Enter short on support breakdown; stop above peak 2";
       points = [
         { x: px - 80, y: py + 40 },
         { x: px - 40, y: py - 30 },
@@ -291,6 +294,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       name = "Head & Shoulders";
       breakoutType = "BEARISH";
       color = "#f43f5e";
+      actionableGuidance = "Short breakdown below neckline; stop above right shoulder";
       points = [
         { x: px - 90, y: py + 20 },
         { x: px - 60, y: py - 20 }, // Left shoulder
@@ -305,6 +309,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       name = "Bull Flag Channel";
       breakoutType = "BULLISH";
       color = "#06b6d4";
+      actionableGuidance = "Enter on flag trendline breakout; target pole extension";
       points = [
         { x: px - 80, y: py + 60 },
         { x: px - 40, y: py - 40 }, // Flagpole
@@ -317,6 +322,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       name = "Ascending Triangle";
       breakoutType = "BULLISH";
       color = "#f59e0b";
+      actionableGuidance = "Enter on horizontal resistance breakout; stop below rising line";
       points = [
         { x: px - 80, y: py + 40 },
         { x: px - 50, y: py - 20 },
@@ -336,7 +342,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
       necklinePrice: Number(currentSpotPrice.toFixed(2)),
       targetPrice: Number((currentSpotPrice * (breakoutType === "BULLISH" ? 1.05 : 0.95)).toFixed(2)),
       breakoutType,
-      color
+      color,
+      actionableGuidance
     };
 
     const newPattern = recomputePatternMetrics(rawPattern, currentSpotPrice);
@@ -824,20 +831,20 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
                 })}
 
                 {/* TARGET & RISK/REWARD HUD CARD */}
-                <g transform={`translate(${lastPt.x + 12}, ${lastPt.y - 32})`}>
+                <g transform={`translate(${lastPt.x + 12}, ${lastPt.y - 36})`}>
                   <rect
                     x="-2"
                     y="-2"
-                    width="194"
-                    height="88"
+                    width="218"
+                    height={pat.actionableGuidance ? "106" : "90"}
                     fill={isBullish ? "rgba(16, 185, 129, 0.15)" : "rgba(244, 63, 94, 0.15)"}
                     rx="10"
                   />
                   <rect
                     x="0"
                     y="0"
-                    width="190"
-                    height="84"
+                    width="214"
+                    height={pat.actionableGuidance ? "102" : "86"}
                     fill="#0a0f1d"
                     stroke={isBullish ? "#10b981" : "#f43f5e"}
                     strokeWidth="1.5"
@@ -847,7 +854,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
                     {pat.name}
                   </text>
                   <rect
-                    x="126"
+                    x="150"
                     y="6"
                     width="56"
                     height="14"
@@ -856,18 +863,23 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
                     strokeWidth="0.8"
                     rx="3"
                   />
-                  <text x="129" y="16" fill={isBullish ? "#34d399" : "#fda4af"} fontSize="8" fontFamily="monospace" fontWeight="bold">
+                  <text x="153" y="16" fill={isBullish ? "#34d399" : "#fda4af"} fontSize="8" fontFamily="monospace" fontWeight="bold">
                     {pat.confidencePct ? `${pat.confidencePct}% AI` : pat.breakoutType}
                   </text>
 
-
-                  <text x="10" y="34" fill={isBullish ? "#34d399" : "#fb7185"} fontSize="11" fontFamily="monospace" fontWeight="extrabold">
+                  <text x="10" y="33" fill={isBullish ? "#34d399" : "#fb7185"} fontSize="11" fontFamily="monospace" fontWeight="extrabold">
                     TARGET: ₹{pat.targetPrice} ({isBullish ? "+" : ""}{pat.targetPct}%)
                   </text>
 
-                  <text x="10" y="49" fill="#94a3b8" fontSize="10" fontFamily="monospace">
+                  <text x="10" y="47" fill="#94a3b8" fontSize="10" fontFamily="monospace">
                     Stop: ₹{pat.stopLossPrice} | R:R 1:{pat.riskRewardRatio}
                   </text>
+
+                  {pat.actionableGuidance && (
+                    <text x="10" y="60" fill="#6ee7b7" fontSize="8" fontFamily="sans-serif">
+                      {pat.actionableGuidance.length > 42 ? `${pat.actionableGuidance.slice(0, 40)}...` : pat.actionableGuidance}
+                    </text>
+                  )}
 
                   <g
                     className="cursor-pointer hover:opacity-80"
@@ -883,8 +895,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
                       }
                     }}
                   >
-                    <rect x="10" y="58" width="115" height="18" fill={isBullish ? "#059669" : "#e11d48"} rx="4" />
-                    <text x="15" y="70" fill="#ffffff" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                    <rect x="10" y={pat.actionableGuidance ? "72" : "58"} width="134" height="18" fill={isBullish ? "#059669" : "#e11d48"} rx="4" />
+                    <text x="16" y={pat.actionableGuidance ? "84" : "70"} fill="#ffffff" fontSize="9" fontFamily="monospace" fontWeight="bold">
                       TRADE TARGET
                     </text>
                   </g>
@@ -896,8 +908,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({
                       setDrawings((prev) => prev.filter((d) => d.id !== pat.id));
                     }}
                   >
-                    <rect x="132" y="58" width="48" height="18" fill="#1e293b" stroke="#334155" rx="4" />
-                    <text x="139" y="70" fill="#94a3b8" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                    <rect x="152" y={pat.actionableGuidance ? "72" : "58"} width="52" height="18" fill="#1e293b" stroke="#334155" rx="4" />
+                    <text x="160" y={pat.actionableGuidance ? "84" : "70"} fill="#94a3b8" fontSize="9" fontFamily="monospace" fontWeight="bold">
                       REMOVE
                     </text>
                   </g>

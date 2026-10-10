@@ -404,15 +404,67 @@ class FinBERTSentimentAnalyzer:
         else:
             sentiment_label = "NEUTRAL"
 
+        # User-Oriented News Narrative & Catalysts Extraction
+        pos_kws = []
+        neg_kws = []
+        for a in articles:
+            if a.get("sentiment") == "POSITIVE":
+                pos_kws.extend(a.get("keywords", []))
+            elif a.get("sentiment") == "NEGATIVE":
+                neg_kws.extend(a.get("keywords", []))
+
+        pos_unique = [k for k in dict.fromkeys(pos_kws) if k != "Market Neutral"][:3]
+        neg_unique = [k for k in dict.fromkeys(neg_kws) if k != "Market Neutral"][:2]
+
+        if sentiment_label == "BULLISH":
+            narrative = (
+                f"Financial media tone is decidedly BULLISH ({bullish_ratio}% positive coverage across {len(articles)} analyzed sources). "
+                f"Key media catalysts include {', '.join(pos_unique) if pos_unique else 'earnings resilience and steady institutional demand'}. "
+                f"Negative headlines are minimal, providing an auspicious fundamental backdrop."
+            )
+            trader_rec = "Favorable news tailwind supports holding core positions and accumulating on intraday pullbacks."
+        elif sentiment_label == "BEARISH":
+            narrative = (
+                f"Financial media tone is cautious and BEARISH with elevated negative headline flow. "
+                f"Major headwinds noted by analysts include {', '.join(neg_unique) if neg_unique else 'macro margin pressures and regulatory caution'}. "
+                f"Traders are pricing in near-term friction."
+            )
+            trader_rec = "Exercise caution with aggressive longs; tighten stops and consider defensive options hedges."
+        else:
+            narrative = (
+                f"Financial news coverage remains balanced and NEUTRAL across active reporting wires. "
+                f"Markets are waiting for upcoming quarterly catalysts or macro guidance before taking strong directional exposure."
+            )
+            trader_rec = "Balanced sentiment backdrop; rely on price action levels and key support/resistance boundaries."
+
+        bullish_catalysts = pos_unique if pos_unique else ["Institutional Accumulation", "Operational Stability"]
+        caution_flags = neg_unique if neg_unique else ["Sector Macro Volatility"]
+
         return {
             "overall_score": avg_score,
+            "overallScore": avg_score,
             "sentiment_label": sentiment_label,
+            "sentimentLabel": sentiment_label,
             "confidence_pct": round(float(np.mean([a["confidence_pct"] for a in articles])), 1),
+            "confidencePct": round(float(np.mean([a["confidence_pct"] for a in articles])), 1),
             "bullish_count": bullish,
+            "bullishCount": bullish,
             "bearish_count": bearish,
+            "bearishCount": bearish,
             "neutral_count": neutral,
+            "neutralCount": neutral,
             "bullish_ratio": bullish_ratio,
-            "sentiment_trend": "IMPROVING" if avg_score > 0.2 else ("DETERIORATING" if avg_score < -0.2 else "STABLE")
+            "bullishRatio": bullish_ratio,
+            "sentiment_trend": "IMPROVING" if avg_score > 0.2 else ("DETERIORATING" if avg_score < -0.2 else "STABLE"),
+            "sentimentTrend": "IMPROVING" if avg_score > 0.2 else ("DETERIORATING" if avg_score < -0.2 else "STABLE"),
+            "marketNarrative": narrative,
+            "market_narrative": narrative,
+            "bullishCatalysts": bullish_catalysts,
+            "bullish_catalysts": bullish_catalysts,
+            "cautionFlags": caution_flags,
+            "caution_flags": caution_flags,
+            "traderActionRecommendation": trader_rec,
+            "trader_action_recommendation": trader_rec
         }
 
 

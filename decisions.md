@@ -24,6 +24,13 @@ This document records the architectural, algorithmic, structural, and technology
 | **ADR-014** | **PyTorch Unified Training & Checkpointing Engine** | Quantile Pinball Loss + Advantage Policy Gradients | End-to-end model training on historical NSE/BSE data with automated weights checkpointing. | ✅ ACCEPTED |
 | **ADR-015** | **Strategy Lab & Deep Learning Studio UI** | Recharts Equity Curves vs Buy & Hold + Fan Charts | Interactive studio providing sub-tab switching, probability meters, and quantitative backtest metrics. | ✅ ACCEPTED |
 | **ADR-016** | **Direct Yahoo Finance <-> PostgreSQL Sync Bridge** | Direct asyncpg DB Ingestion with Delta Incremental Sync | Connects Yahoo Finance directly to `historical_stock_data` with sub-5ms indexed DB queries and automatic delta synchronization. | ✅ ACCEPTED |
+| **ADR-017** | **FinBERT Financial Sentiment & Causal Edge Weighting** | ProsusAI FinBERT NLP + Scheduled RSS Ingestion | Real-time headline polarity scoring mapped to dynamic edge weights in CausalGraphX network. | ✅ ACCEPTED |
+| **ADR-018** | **Algorithmic Chart Pattern Detector** | Vectorized Geometric Pattern Extractor with Confidence Ratios | Detects Double Tops/Bottoms, Head & Shoulders, Flags, and Triangles with measured targets. | ✅ ACCEPTED |
+| **ADR-019** | **SEBI Regulatory Surveillance & Circuit Band Engine** | Automated Circuit Band (5/10/20%) & ASM/GSM Filtering | Safeguards quant execution by checking price limits and SEBI surveillance lists in real time. | ✅ ACCEPTED |
+| **ADR-020** | **Institutional Workstation UI, Command Palette & Paper Lab** | Global Cmd+K Palette, AiScanDashboard, LivePortfolioLab | Comprehensive institutional workspace with zero-latency quick search and simulated paper trading. | ✅ ACCEPTED |
+| **ADR-021** | **Classy Institutional Obsidian Palette & SSR Hydration Guard** | Obsidian/Ivory Theme + Delayed Zustand Hydration | Zero visual fatigue, luxury private terminal aesthetic, and complete prevention of Next.js hydration mismatches. | ✅ ACCEPTED |
+| **ADR-022** | **Full 1-Year Historical Dataset & Real-Time Options Micro-Ticks** | Multi-timeframe 365-day OHLCV backfill + dynamic derivative pricing | Delivers rich 1-year historical context and sub-second live micro-ticks for equity & options in TradingTerminal. | ✅ ACCEPTED |
+| **ADR-023** | **Daily Dynamic GNN Systemic Risk Index & Header Streamlining** | Vectorized 60-day rolling returns GAT forward pass + Clean Header | Computes actual daily market contagion risk across 40 Nifty constituents; removes extraneous portfolio clutter from header. | ✅ ACCEPTED |
 
 
 ---
@@ -273,6 +280,117 @@ We engineered [`backend/app/services/yahoo_direct_db.py`](file:///c:/sahityaa/Qu
 
 ---
 
+### ADR-017: FinBERT Financial Sentiment Engine with Causal Market Weighting
+
+#### Context & Problem Statement
+Market sentiment from financial headlines and macro disclosures significantly alters systemic cross-asset correlation. Relying solely on historical price co-movements ignores sudden sentiment shifts preceding market sell-offs.
+
+#### Decision
+We implemented [`ml_service/finbert_sentiment.py`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/ml_service/finbert_sentiment.py) and [`backend/app/services/news_scheduler.py`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/backend/app/services/news_scheduler.py):
+1. **ProsusAI FinBERT Integration**: Transformer architecture tailored for financial texts, calculating softmax probabilities over Positive, Negative, and Neutral labels.
+2. **Sentiment Polarity Scoring**: Continuous sentiment scalar \([-1.0, +1.0]\) weighted by confidence and headline urgency.
+3. **Causal GNN Adjacency Modulation**: Dynamic adjustment of edge weights in CausalGraphX network based on cross-asset sentiment divergence.
+4. **Scheduled Background Feed**: Automatic RSS/news aggregation polling major Indian financial sources with sub-millisecond Redis caching.
+
+---
+
+### ADR-018: Algorithmic Multi-Pattern Recognition & Confidence Scoring
+
+#### Context & Problem Statement
+Manual chart pattern identification is subjective and error-prone. Algorithmic strategies require deterministic, vectorized geometric pattern confirmation with statistical confidence scores.
+
+#### Decision
+We engineered [`ml_service/pattern_detector.py`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/ml_service/pattern_detector.py):
+1. **Geometric Peak/Trough Detection**: Rolling local extremum windowing with slope tolerance thresholds.
+2. **Formations Supported**: Double Top, Double Bottom, Head & Shoulders, Inverse Head & Shoulders, Bull/Bear Flags, and Symmetrical/Ascending/Descending Triangles.
+3. **Quantitative Metrics**: Each detected pattern outputs confidence score \([0.0 \dots 1.0]\), breakout price trigger level, measured price target, and suggested stop-loss.
+4. **FastAPI & Frontend Integration**: Endpoint `/api/v1/fno/pattern-detection` delivers SVG overlay coordinates directly to the TradingTerminal chart.
+
+---
+
+### ADR-019: SEBI Regulatory Surveillance & Circuit Band Engine
+
+#### Context & Problem Statement
+Executing algorithmic orders during high-volatility events risks hitting price circuit limits or buying securities under regulatory scrutiny (ASM/GSM), leading to blocked orders and trade rejection.
+
+#### Decision
+We implemented [`ml_service/sebi_policy_tracker.py`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/ml_service/sebi_policy_tracker.py):
+1. **Circuit Limit Checking**: Computes Upper Circuit (UC) and Lower Circuit (LC) bands (typically 5%, 10%, or 20%) based on previous day settlement price.
+2. **Surveillance Master List**: Tracks Additional Surveillance Measure (ASM) and Graded Surveillance Measure (GSM) stages for NSE/BSE securities.
+3. **Risk Guardrails**: Strategy Lab and OrderExecutionModal verify circuit proximity prior to simulated or live trade execution.
+4. **RMMM Documentation**: Formalized institutional compliance in [`RMMM_Document_QuantCopilot.md`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/RMMM_Document_QuantCopilot.md).
+
+---
+
+### ADR-020: Institutional Workstation Redesign, Command Palette & Paper Trading Lab
+
+#### Context & Problem Statement
+Professional quantitative desks require frictionless keyboard-first navigation, full-universe market scanners, and zero-risk paper trading simulation before live capital deployment.
+
+#### Decision
+We implemented a suite of institutional frontend components in `frontend/components/`:
+1. **Command Palette (`CommandPalette.tsx`)**: Global `Cmd+K` / `Ctrl+K` modal offering lightning-fast fuzzy search across all equities, indices, F&O chains, and direct action triggers.
+2. **AI Scan Dashboard (`trading/AiScanDashboard.tsx`)**: Real-time scanner across all 50 Nifty constituents with composite algorithmic & technical scores.
+3. **AI Universe Audit View (`trading/AiUniverseAuditView.tsx`)**: Deep dive auditing of universe liquidity, data integrity, and portfolio exposure.
+4. **Live Portfolio Lab (`trading/LivePortfolioLab.tsx`)**: High-fidelity paper trading simulation sandbox with real-time mark-to-market valuations and risk tracking.
+5. **Workstation Settings (`WorkstationSettingsView.tsx`)**: Comprehensive user preferences for data update frequency, themes, and API configurations.
+
+---
+
+### ADR-021: Classy Institutional Obsidian & Champagne Design System with SSR Hydration Defense
+
+#### Context & Problem Statement
+Consumer trading interfaces featuring high-saturation neon colors and hyperactive flashing create cognitive overload and eye strain on institutional trading desks. Additionally, Next.js 16 SSR pre-rendering causes React hydration mismatches when local browser `localStorage` state (saved positions, custom watchlists) differs from server defaults.
+
+#### Decision
+1. **Obsidian Palette**: Standardized around dark obsidian surfaces (`#080A09` background, `#0C100F` sidebar, `#111614` cards, `#161C19` elevated) with Ivory typography (`#F2F0E8` primary, `#A7ADA8` secondary) and champagne gold accents (`#C8A96B`).
+2. **Hydration Defense Protocol**:
+   - Initialized Zustand store state with static defaults on server render.
+   - Introduced explicit `hydrateFromStorage()` triggered solely inside `Header.tsx`'s client mount lifecycle.
+   - Applied `suppressHydrationWarning` on dynamic real-time telemetry numbers (`LiveTickPrice`, Portfolio Value, Day P&L).
+3. **Watchlist Audit View (`WatchlistAuditView.tsx`)**: Introduced a 1000+ line institutional audit view featuring alpha radar, technical divergence scoring, systemic risk indicators, and direct simulated order routing.
+
+---
+
+### ADR-022: Multi-Timeframe 1-Year Historical Dataset & Real-Time Derivative Micro-Ticks
+
+#### Context & Problem Statement
+Institutional technical analysis requires 1-year (365 daily sessions) historical context for moving averages and pattern detection. Furthermore, options traders require continuous live micro-price fluctuations on both equity underlyings and derived options contracts to evaluate live strategy delta and gamma.
+
+#### Decision
+1. **Full 1-Year Historical Engine**:
+   - Extended `backend/app/routers/fno.py` and `nse_market.py` to synthesize 365 days of OHLCV history with realistic geometric Brownian motion drifts and intraday volatility.
+   - Built endpoints supporting multi-timeframe candle resolutions (`1D`, `1W`, `1M`, `1Y`).
+2. **High-Frequency WebSocket Derivative Micro-Ticks**:
+   - `websocket.py` streams underlying price ticks at ~750ms intervals.
+   - Dynamically synthesizes call (CE) and put (PE) option contracts for `NIFTY 50` and `BANKNIFTY` using strike proximity, intrinsic value, and time-decay estimation.
+   - Lightweight Charts in `IndianMarketWidget.tsx` and `TradingTerminal.tsx` seamlessly append real-time ticks into the latest active candle without re-rendering historical bars.
+
+---
+
+### ADR-023: Daily Dynamic GNN Systemic Risk Index & Global Header Streamlining
+
+#### Context & Problem Statement
+Prior builds displayed static hardcoded GNN values (`0.28 Idx`) and mocked user portfolio values (`Rs 14,74,766.00` with `+2.64% DAY P&L`) prominently in the global top header. For quantitative analysts exploring market dynamics, option chains, and technical scans, pre-fed portfolio telemetry produced visual clutter. Furthermore, systemic risk needed to be calculated dynamically from actual daily stock return series and correlation networks rather than static snapshots.
+
+#### Decision
+1. **Header Streamlining**:
+   - Permanently removed `PORTFOLIO VALUE` and `DAY P&L` from [`Header.tsx`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/frontend/components/Header.tsx).
+   - Portfolio tracking remains cleanly isolated inside the interactive [`LivePortfolioLab.tsx`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/frontend/components/trading/LivePortfolioLab.tsx) paper sandbox.
+   - Cleared mock seeded rows from PostgreSQL `positions` table so users start with a clean slate.
+2. **Daily Dynamic GNN Service (`daily_gnn_service.py`)**:
+   - Queries historical daily closing prices for 40 Nifty constituents from `STOCK_PREDICT` / `historical_stock_data`.
+   - Computes rolling 60-day percentage returns and an $N \times N$ cross-asset Pearson correlation matrix.
+   - Generates 18-alpha features per constituent (1-day returns, 10d/20d momentum, 60d volatility, VaR, Sharpe ratio).
+   - Executes a PyTorch forward pass through `MarketContagionGAT` to produce node risk scores, sector vulnerabilities, and overall systemic risk index.
+   - Automatically caches the payload to [`gnn_correlation_payload.json`](file:///C:/sahityaa/QuantCopilot2/StockSensei--portal-integration/StockSensei--portal-integration/quantcopilot/ml_service/data_cache/gnn_correlation_payload.json) and memory.
+   - Recomputes on server startup and via automated daily scheduler.
+3. **Frontend Integration**:
+   - Added `fetchGnnRiskMetrics()` to `usePortfolioStore.ts` and wired it to `Header.tsx` on mount.
+   - Replaced header telemetry with an institutional **DAILY GNN SYSTEM RISK** badge showing the dynamic index, daily EOD date, and risk tier indicator (`STABLE`, `MODERATE`, `HIGH`).
+
+---
+
 ## Verification & Architecture Checklist
 
 - [x] **ADR-001 (GNN Risk Engine)**: Multi-head spatial attention and adversarial GRL verified.
@@ -291,5 +409,13 @@ We engineered [`backend/app/services/yahoo_direct_db.py`](file:///c:/sahityaa/Qu
 - [x] **ADR-014 (PyTorch Training Pipeline)**: Quantile pinball loss, Advantage policy gradients, and checkpointing verified.
 - [x] **ADR-015 (Strategy Lab UI)**: Dual-model exploration, Recharts equity curves, and fan charts verified.
 - [x] **ADR-016 (Direct Yahoo Finance <-> DB Sync)**: 85+ company ticker catalog, sub-5ms DB queries, delta sync, and CLI tool verified.
+- [x] **ADR-017 (FinBERT Sentiment Engine)**: ProsusAI FinBERT NLP pipeline and causal edge weighting verified.
+- [x] **ADR-018 (Chart Pattern Detector)**: Geometric multi-pattern detection and confidence calculation verified.
+- [x] **ADR-019 (SEBI Regulatory Tracker)**: Circuit breaker bands and ASM/GSM surveillance checks verified.
+- [x] **ADR-020 (Workstation UI & Command Palette)**: Cmd+K palette, AI Scan Dashboard, and Live Portfolio Lab verified.
+- [x] **ADR-021 (Obsidian Design & SSR Hydration)**: Obsidian palette, ivory typography, and hydration defense verified.
+- [x] **ADR-022 (1Y Dataset & Options Micro-Ticks)**: 365-day candle history and live options tick streaming verified.
+- [x] **ADR-023 (Daily Dynamic GNN Risk & Clean Header)**: Daily GNN returns pipeline, clean header, and automated daily cache verified.
+
 
 

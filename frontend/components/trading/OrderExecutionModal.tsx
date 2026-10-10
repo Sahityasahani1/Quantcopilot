@@ -24,21 +24,23 @@ export const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({
   currentPrice,
   initialSide = "BUY"
 }) => {
-  const { addPosition } = usePortfolioStore();
+  const { addPosition, indianTickers } = usePortfolioStore();
+  const cleanSym = symbol ? symbol.replace("-EQ", "").toUpperCase() : "";
+  const effectivePrice = currentPrice > 0 ? currentPrice : (indianTickers[cleanSym]?.price || 2400);
 
   const [side, setSide] = useState<"BUY" | "SELL">(initialSide);
   const [productType, setProductType] = useState<"INTRADAY" | "DELIVERY" | "OPTIONS_NRML">("INTRADAY");
   const [orderType, setOrderType] = useState<"MARKET" | "LIMIT">("MARKET");
   const [quantity, setQuantity] = useState<number>(50);
-  const [limitPrice, setLimitPrice] = useState<number>(currentPrice || 1000);
+  const [limitPrice, setLimitPrice] = useState<number>(effectivePrice);
   const [hasBracketSL, setHasBracketSL] = useState<boolean>(false);
-  const [stopLossPrice, setStopLossPrice] = useState<number>(Number(((currentPrice || 1000) * 0.98).toFixed(2)));
-  const [targetPrice, setTargetPrice] = useState<number>(Number(((currentPrice || 1000) * 1.04).toFixed(2)));
+  const [stopLossPrice, setStopLossPrice] = useState<number>(Number((effectivePrice * 0.98).toFixed(2)));
+  const [targetPrice, setTargetPrice] = useState<number>(Number((effectivePrice * 1.04).toFixed(2)));
   const [orderPlaced, setOrderPlaced] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
-  const price = orderType === "MARKET" ? currentPrice : limitPrice;
+  const price = orderType === "MARKET" ? (currentPrice > 0 ? currentPrice : effectivePrice) : limitPrice;
   const leverage = productType === "INTRADAY" ? 5 : 1;
   const grossValue = price * quantity;
   const marginRequired = Number((grossValue / leverage).toFixed(2));

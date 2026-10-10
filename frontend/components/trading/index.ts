@@ -7,5 +7,7 @@ export * from "./OrderExecutionModal";
 export * from "./IndicatorsSubPanel";
 export * from "./AiScanDashboard";
 export * from "./AiUniverseAuditView";
-
-
+export * from "./SebiSurveillanceView";
+export * from "./AlphaForecasterView";
+export * from "./LivePortfolioCsvModal";
+export * from "./LivePortfolioLab";

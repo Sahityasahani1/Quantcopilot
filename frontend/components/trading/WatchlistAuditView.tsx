@@ -62,7 +62,8 @@ export const WatchlistAuditView: React.FC = () => {
     addToWatchlist, 
     removeFromWatchlist, 
     addPosition,
-    fetchSavedPositionsFromBackend 
+    fetchSavedPositionsFromBackend,
+    indianTickers
   } = usePortfolioStore();
 
   // Live quotes state
@@ -216,7 +217,9 @@ export const WatchlistAuditView: React.FC = () => {
     if (!orderModalStock) return;
     const sym = orderModalStock.symbol;
     const quote = orderModalStock.quote;
-    const curPrice = quote?.price || orderModalStock.audit?.spot_price || 1000.0;
+    const symClean = sym.replace("-EQ", "");
+    const fallbackPrice = indianTickers[symClean]?.price || indianTickers[sym]?.price || orderModalStock.audit?.spot_price || 2400.0;
+    const curPrice = quote?.price || fallbackPrice;
 
     const newPos: PositionInput = {
       symbol: sym,
@@ -976,7 +979,7 @@ export const WatchlistAuditView: React.FC = () => {
                   <div className="flex justify-between text-xs">
                     <span className="text-[#68716C]">Current Market Price (CMP):</span>
                     <span className="font-mono font-medium text-[#F2F0E8]">
-                      ₹{(orderModalStock.quote?.price ?? orderModalStock.audit?.spot_price ?? 1000).toFixed(2)}
+                      ₹{(orderModalStock.quote?.price ?? indianTickers[orderModalStock.symbol.replace("-EQ","")]?.price ?? orderModalStock.audit?.spot_price ?? 2400).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs">
@@ -1031,7 +1034,7 @@ export const WatchlistAuditView: React.FC = () => {
                   <div className="flex justify-between text-xs text-[#68716C] pt-1 font-mono">
                     <span>Total Investment Exposure:</span>
                     <span className="text-[#F2F0E8] font-medium">
-                      ₹{(((orderModalStock.quote?.price ?? orderModalStock.audit?.spot_price ?? 1000)) * orderQuantity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ₹{(((orderModalStock.quote?.price ?? indianTickers[orderModalStock.symbol.replace("-EQ","")]?.price ?? orderModalStock.audit?.spot_price ?? 2400)) * orderQuantity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
