@@ -308,8 +308,13 @@ def _fetch_yfinance_candles_sync(clean_sym: str, timeframe: str, limit: int) -> 
             df = yf.download(yf_ticker, period=period, interval=interval, progress=False)
             if df is not None and not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-                df = df.dropna(subset=["Close", "Open", "High", "Low"])
+                    if "Close" in df.columns.levels[0]:
+                        df.columns = df.columns.get_level_values(0)
+                    elif len(df.columns.levels) > 1 and "Close" in df.columns.levels[1]:
+                        df.columns = df.columns.get_level_values(1)
+                    else:
+                        df.columns = df.columns.get_level_values(0)
+                df = df.dropna(subset=[c for c in ["Close", "Open", "High", "Low"] if c in df.columns])
 
                 if not df.empty:
                     latest_close = float(df["Close"].iloc[-1])

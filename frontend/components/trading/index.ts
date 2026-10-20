@@ -11,3 +11,5 @@ export * from "./SebiSurveillanceView";
 export * from "./AlphaForecasterView";
 export * from "./LivePortfolioCsvModal";
 export * from "./LivePortfolioLab";
+export * from "./EquityTerminalView";
+

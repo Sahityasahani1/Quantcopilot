@@ -36,9 +36,9 @@ import {
   DetectedPatternAPI,
   Point
 } from "../../types/trading";
-import { Activity, X, Cpu } from "lucide-react";
+import { Activity, X, Cpu, ArrowUpRight } from "lucide-react";
 import { getApiBaseUrl, getWsBaseUrl } from "../../lib/api";
-
+import { computeAllIndicators, SyncedIndicatorPoint } from "../../lib/indicators";
 
 export const TradingTerminal: React.FC = () => {
   const {
@@ -50,8 +50,10 @@ export const TradingTerminal: React.FC = () => {
     fetchFnoDepth,
     gnnContagionSignal,
     fetchGnnSignals,
-    indianTickers
+    indianTickers,
+    setActiveTab
   } = usePortfolioStore();
+
 
   const [activeDesk, setActiveDesk] = useState<"EQUITY" | "FNO" | "AI_SCAN">("FNO");
 
@@ -93,8 +95,10 @@ export const TradingTerminal: React.FC = () => {
   const [patternNotification, setPatternNotification] = useState<string | null>(null);
 
   // Live Hover Candle for OHLCV crosshair inspector
-
   const [hoverCandle, setHoverCandle] = useState<{ open: number; high: number; low: number; close: number; volume?: number; time?: string | number } | null>(null);
+  const [syncedIndicatorPoints, setSyncedIndicatorPoints] = useState<SyncedIndicatorPoint[]>([]);
+  const [hoveredIndicatorPoint, setHoveredIndicatorPoint] = useState<SyncedIndicatorPoint | null>(null);
+  const timeMapRef = useRef<Map<string | number, SyncedIndicatorPoint>>(new Map());
 
   // Container dimensions
   const [chartDims, setChartDims] = useState<{ width: number; height: number }>({ width: 800, height: 400 });
@@ -208,7 +212,7 @@ export const TradingTerminal: React.FC = () => {
       }
     } catch {}
 
-    // Subscribe to crosshair move for live OHLCV inspector
+    // Subscribe to crosshair move for live OHLCV inspector & indicator synchronization
     try {
       chart.subscribeCrosshairMove((param: MouseEventParams) => {
         if (isDisposed) return;
@@ -234,7 +238,15 @@ export const TradingTerminal: React.FC = () => {
                 });
               }
             }
+
+            // Exact match with computed indicator point
+            const pt = timeMapRef.current.get(param.time as any) || timeMapRef.current.get(String(param.time));
+            if (pt) {
+              setHoveredIndicatorPoint(pt);
+            }
           } catch {}
+        } else {
+          setHoveredIndicatorPoint(null);
         }
       });
     } catch {}
@@ -248,7 +260,11 @@ export const TradingTerminal: React.FC = () => {
         if (!chartRef.current || !seriesRef.current) return;
 
         try {
-          if (data && data.length > 0 && seriesRef.current) {
+          if (Array.isArray(data) && data.length > 0 && seriesRef.current) {
+            const { points, timeMap } = computeAllIndicators(data);
+            setSyncedIndicatorPoints(points);
+            timeMapRef.current = timeMap;
+
             latestCandleRef.current = { ...data[data.length - 1] };
             livePriceRef.current = data[data.length - 1].close;
 
@@ -786,6 +802,16 @@ export const TradingTerminal: React.FC = () => {
             <Cpu className="h-3.5 w-3.5 text-[#159570]" />
             <span>AI SCAN &amp; POLICY</span>
           </button>
+          <button
+            onClick={() => {
+              setActiveTab("equity_terminal");
+            }}
+            title="Open Dedicated Fullscreen Synced Equity Terminal"
+            className="flex items-center space-x-1 px-2 py-1 rounded-sm text-xs font-medium text-[#159570] hover:bg-[#159570]/15 border border-[#159570]/40 transition-all ml-1 shadow-sm"
+          >
+            <span>FULL EQUITY TERMINAL</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </button>
         </div>
 
         <div className="flex items-center space-x-3 text-xs font-mono">
@@ -882,6 +908,15 @@ export const TradingTerminal: React.FC = () => {
                 indicators={indicators}
                 onCloseIndicator={(k) => setIndicators(prev => ({ ...prev, [k]: false }))}
                 width={chartDims.width}
+                data={syncedIndicatorPoints}
+                hoveredPoint={hoveredIndicatorPoint}
+                onHoverIndex={(idx) => {
+                  if (idx !== null && idx >= 0 && idx < syncedIndicatorPoints.length) {
+                    setHoveredIndicatorPoint(syncedIndicatorPoints[idx]);
+                  } else {
+                    setHoveredIndicatorPoint(null);
+                  }
+                }}
               />
             </div>
 

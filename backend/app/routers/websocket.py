@@ -180,9 +180,9 @@ class ConnectionManager:
                 new_high = max(state["day_high"], new_p)
                 new_low = min(state["day_low"], new_p)
                 
-                prev_c = state["prev_close"]
+                prev_c = state.get("prev_close") or new_p or 1.0
                 chg_pts = round(new_p - prev_c, 2)
-                chg_24h = round((chg_pts / prev_c) * 100.0, 2)
+                chg_24h = round((chg_pts / prev_c) * 100.0, 2) if prev_c > 0 else 0.0
                 
                 state["price"] = new_p
                 state["day_high"] = new_high
@@ -289,6 +289,8 @@ connection_manager: ConnectionManager = manager
 
 @router.websocket("/ws")
 @router.websocket("/ws/live-feed")
+@router.websocket("/api/v1/ws")
+@router.websocket("/api/v1/ws/live-feed")
 async def websocket_live_feed(websocket: WebSocket) -> None:
     connected = await manager.connect(websocket)
     if not connected:

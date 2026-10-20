@@ -30,8 +30,8 @@ YF_INDEX_MAP = {
     "MIDCPNIFTY": "NIFTY_MIDCAP_100.NS",
     "SENSEX": "^BSESN",
     "^BSESN": "^BSESN",
-    "TATAMOTORS": "TMPV.NS",
-    "ZOMATO": "ETERNAL.NS",
+    "TATAMOTORS": "TATAMOTORS.NS",
+    "ZOMATO": "ZOMATO.NS",
 }
 
 def resolve_yahoo_symbol(symbol: str, exchange: str = "NSE") -> str:
@@ -88,7 +88,12 @@ class YahooDirectDBEngine:
 
             if df is not None and not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
+                    if "Close" in df.columns.levels[0]:
+                        df.columns = df.columns.get_level_values(0)
+                    elif len(df.columns.levels) > 1 and "Close" in df.columns.levels[1]:
+                        df.columns = df.columns.get_level_values(1)
+                    else:
+                        df.columns = df.columns.get_level_values(0)
                 df.reset_index(inplace=True)
                 df["symbol"] = symbol.replace("-EQ", "").strip().upper()
                 df["exchange"] = exchange.upper()

@@ -144,10 +144,15 @@ def get_symbol_dataframe_and_prices(symbol: str, count: int = 150) -> Tuple[Opti
         yf_df = yf.download(yf_symbol, period="6mo", interval="1d", progress=False)
         if not yf_df.empty and len(yf_df) >= 15:
             if isinstance(yf_df.columns, pd.MultiIndex):
-                yf_df.columns = [col[0] for col in yf_df.columns]
+                if "Close" in yf_df.columns.levels[0]:
+                    yf_df.columns = yf_df.columns.get_level_values(0)
+                elif len(yf_df.columns.levels) > 1 and "Close" in yf_df.columns.levels[1]:
+                    yf_df.columns = yf_df.columns.get_level_values(1)
+                else:
+                    yf_df.columns = yf_df.columns.get_level_values(0)
             yf_df = yf_df.reset_index()
-            rename_map = {"Date": "Date", "Open": "Open", "High": "High", "Low": "Low", "Close": "Close", "Volume": "Volume"}
-            yf_df = yf_df.rename(columns=rename_map)[["Date", "Open", "High", "Low", "Close", "Volume"]].tail(count).reset_index(drop=True)
+            cols = [c for c in ["Date", "Open", "High", "Low", "Close", "Volume"] if c in yf_df.columns]
+            yf_df = yf_df[cols].tail(count).reset_index(drop=True)
             yf_df["AvgPrice"] = yf_df["Close"]
             yf_df["DelivQty"] = 0
             yf_df["DelivPct"] = 50.0

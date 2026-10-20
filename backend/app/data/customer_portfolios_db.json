@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0.0",
   "created_at": "2026-10-06T18:03:16.417395+00:00",
-  "last_checkpoint": "2026-10-09T11:51:33.919522+00:00",
+  "last_checkpoint": "2026-10-15T09:54:46.861167+00:00",
   "customers": {
     "cust_sahitya": {
       "customer_id": "cust_sahitya",
@@ -18,8 +18,8 @@
             "symbol": "RELIANCE",
             "quantity": 258.0,
             "entry_price": 1172.17,
-            "current_price": 1170.3,
-            "unrealized_pnl": -2412.3,
+            "current_price": 1214.0,
+            "unrealized_pnl": 53960.7,
             "realized_pnl": 0.0,
             "side": "LONG",
             "leverage": 5.0
@@ -28,8 +28,8 @@
             "symbol": "TCS",
             "quantity": 20.0,
             "entry_price": 2040.0,
-            "current_price": 2156.0,
-            "unrealized_pnl": 2320.0,
+            "current_price": 2360.2,
+            "unrealized_pnl": 6404.0,
             "realized_pnl": 0.0,
             "side": "LONG",
             "leverage": 1.0
@@ -38,8 +38,8 @@
             "symbol": "HDFCBANK",
             "quantity": 60.0,
             "entry_price": 680.0,
-            "current_price": 707.25,
-            "unrealized_pnl": 1635.0,
+            "current_price": 725.15,
+            "unrealized_pnl": 2709.0,
             "realized_pnl": 0.0,
             "side": "LONG",
             "leverage": 1.0
@@ -48,8 +48,8 @@
             "symbol": "INFY",
             "quantity": 50.0,
             "entry_price": 980.0,
-            "current_price": 1023.4,
-            "unrealized_pnl": 2170.0,
+            "current_price": 1110.0,
+            "unrealized_pnl": 6500.0,
             "realized_pnl": 0.0,
             "side": "LONG",
             "leverage": 1.0
@@ -58,23 +58,23 @@
             "symbol": "TATAMOTORS",
             "quantity": 50.0,
             "entry_price": 265.0,
-            "current_price": 279.9,
-            "unrealized_pnl": 745.0,
+            "current_price": 287.15,
+            "unrealized_pnl": 1107.5,
             "realized_pnl": 0.0,
             "side": "LONG",
             "leverage": 1.0
           }
         ],
-        "total_equity": 504457.7,
+        "total_equity": 570681.2,
         "realized_pnl": 0.0,
-        "unrealized_pnl": 4457.7,
-        "daily_pnl": -5768.0,
-        "daily_pnl_percentage": -1.14,
-        "net_exposure": 1660407.0,
-        "margin_usage": 82.29,
+        "unrealized_pnl": 70681.2,
+        "daily_pnl": 54066.5,
+        "daily_pnl_percentage": 9.47,
+        "net_exposure": 1726630.5,
+        "margin_usage": 75.64,
         "sharpe_ratio": 2.85,
-        "var_99": 46491.4,
-        "updated_at": "2026-10-09T11:51:33.919493+00:00"
+        "var_99": 48345.65,
+        "updated_at": "2026-10-15T09:54:46.861131+00:00"
       }
     },
     "cust_demo": {

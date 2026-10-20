@@ -185,6 +185,7 @@ export type ConnectionStatus = "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "ER
 
 export type ActiveTab = 
   | "dashboard" 
+  | "equity_terminal"
   | "fno_terminal" 
   | "watchlist" 
   | "portfolio_lab" 
@@ -195,6 +196,7 @@ export type ActiveTab =
   | "alpha_forecaster"
   | "sebi_surveillance"
   | "settings";
+
 
 export interface CandleData {
   time: number;

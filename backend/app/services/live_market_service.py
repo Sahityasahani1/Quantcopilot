@@ -34,7 +34,7 @@ TICKERS_CONFIG = [
     {"symbol": "HDFCBANK", "yf_symbol": "HDFCBANK.NS", "company_name": "HDFC Bank Ltd", "sector": "Banking", "exchange": "NSE", "type": "EQUITY", "token": "1333"},
     {"symbol": "INFY", "yf_symbol": "INFY.NS", "company_name": "Infosys Ltd", "sector": "IT Services", "exchange": "NSE", "type": "EQUITY", "token": "1594"},
     {"symbol": "ICICIBANK", "yf_symbol": "ICICIBANK.NS", "company_name": "ICICI Bank Ltd", "sector": "Banking", "exchange": "NSE", "type": "EQUITY", "token": "4963"},
-    {"symbol": "TATAMOTORS", "yf_symbol": "TMPV.NS", "company_name": "Tata Motors Ltd", "sector": "Automotive", "exchange": "NSE", "type": "EQUITY", "token": "3456"},
+    {"symbol": "TATAMOTORS", "yf_symbol": "TATAMOTORS.NS", "company_name": "Tata Motors Ltd", "sector": "Automotive", "exchange": "NSE", "type": "EQUITY", "token": "3456"},
     {"symbol": "SBIN", "yf_symbol": "SBIN.NS", "company_name": "State Bank of India", "sector": "Banking", "exchange": "NSE", "type": "EQUITY", "token": "3045"},
     {"symbol": "ITC", "yf_symbol": "ITC.NS", "company_name": "ITC Ltd", "sector": "FMCG", "exchange": "NSE", "type": "EQUITY", "token": "1660"},
     {"symbol": "BHARTIARTL", "yf_symbol": "BHARTIARTL.NS", "company_name": "Bharti Airtel Ltd", "sector": "Telecom", "exchange": "NSE", "type": "EQUITY", "token": "10604"},
@@ -54,7 +54,7 @@ TICKERS_CONFIG = [
     {"symbol": "NTPC", "yf_symbol": "NTPC.NS", "company_name": "NTPC Ltd", "sector": "Power & Utilities", "exchange": "NSE", "type": "EQUITY", "token": "11630"},
     {"symbol": "ONGC", "yf_symbol": "ONGC.NS", "company_name": "Oil & Natural Gas Corp", "sector": "Energy", "exchange": "NSE", "type": "EQUITY", "token": "2475"},
     {"symbol": "POWERGRID", "yf_symbol": "POWERGRID.NS", "company_name": "Power Grid Corp of India", "sector": "Power & Utilities", "exchange": "NSE", "type": "EQUITY", "token": "14977"},
-    {"symbol": "ZOMATO", "yf_symbol": "ETERNAL.NS", "company_name": "Eternal Ltd (Zomato)", "sector": "Internet & Services", "exchange": "NSE", "type": "EQUITY", "token": "543320"},
+    {"symbol": "ZOMATO", "yf_symbol": "ZOMATO.NS", "company_name": "Eternal Ltd (Zomato)", "sector": "Internet & Services", "exchange": "NSE", "type": "EQUITY", "token": "543320"},
     {"symbol": "JIOFIN", "yf_symbol": "JIOFIN.NS", "company_name": "Jio Financial Services", "sector": "Financial Services", "exchange": "NSE", "type": "EQUITY", "token": "543940"},
     {"symbol": "BEL", "yf_symbol": "BEL.NS", "company_name": "Bharat Electronics Ltd", "sector": "Defence & Aerospace", "exchange": "NSE", "type": "EQUITY", "token": "500049"},
     {"symbol": "HAL", "yf_symbol": "HAL.NS", "company_name": "Hindustan Aeronautics Ltd", "sector": "Defence & Aerospace", "exchange": "NSE", "type": "EQUITY", "token": "541154"}
@@ -98,16 +98,29 @@ class LiveMarketService:
                 sym = item["symbol"]
                 yf_sym = item["yf_symbol"]
                 try:
-                    sub = df[yf_sym] if yf_sym in df else None
+                    sub = None
+                    if isinstance(df.columns, pd.MultiIndex):
+                        if yf_sym in df.columns.levels[0]:
+                            sub = df[yf_sym]
+                        elif len(df.columns.levels) > 1 and yf_sym in df.columns.levels[1]:
+                            sub = df.xs(yf_sym, axis=1, level=1)
+                    elif yf_sym in df:
+                        sub = df[yf_sym]
+
                     if sub is not None and not sub.empty:
-                        close_s = sub["Close"].dropna()
+                        close_s = sub["Close"].dropna() if "Close" in sub else pd.Series(dtype=float)
                         if not close_s.empty:
                             last_price = float(close_s.iloc[-1])
                             prev_price = float(close_s.iloc[-2]) if len(close_s) > 1 else last_price
-                            open_p = float(sub["Open"].dropna().iloc[-1]) if not sub["Open"].dropna().empty else last_price
-                            high_p = float(sub["High"].dropna().iloc[-1]) if not sub["High"].dropna().empty else last_price
-                            low_p = float(sub["Low"].dropna().iloc[-1]) if not sub["Low"].dropna().empty else last_price
-                            vol = int(sub["Volume"].dropna().iloc[-1]) if not sub["Volume"].dropna().empty else 0
+                            open_s = sub["Open"].dropna() if "Open" in sub else pd.Series(dtype=float)
+                            high_s = sub["High"].dropna() if "High" in sub else pd.Series(dtype=float)
+                            low_s = sub["Low"].dropna() if "Low" in sub else pd.Series(dtype=float)
+                            vol_s = sub["Volume"].dropna() if "Volume" in sub else pd.Series(dtype=float)
+
+                            open_p = float(open_s.iloc[-1]) if not open_s.empty else last_price
+                            high_p = float(high_s.iloc[-1]) if not high_s.empty else last_price
+                            low_p = float(low_s.iloc[-1]) if not low_s.empty else last_price
+                            vol = int(vol_s.iloc[-1]) if not vol_s.empty else 0
 
                             chg_pts = round(last_price - prev_price, 2)
                             chg_pct = round((chg_pts / prev_price) * 100.0, 2) if prev_price > 0 else 0.0

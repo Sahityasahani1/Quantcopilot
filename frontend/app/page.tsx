@@ -28,6 +28,8 @@ import { SebiSurveillanceView } from "../components/trading/SebiSurveillanceView
 import { AlphaForecasterView } from "../components/trading/AlphaForecasterView";
 import { WorkstationSettingsView } from "../components/WorkstationSettingsView";
 import { LiveTickPrice } from "../components/common/LiveTickPrice";
+import { EquityTerminalView } from "../components/trading/EquityTerminalView";
+
 
 export default function Home() {
   const { 
@@ -45,6 +47,14 @@ export default function Home() {
     isLiveSyncing,
     lastLiveSyncTime
   } = usePortfolioStore();
+
+  if (activeTab === "equity_terminal") {
+    return (
+      <div key="equity_terminal" className="w-full max-w-[1700px] mx-auto animate-fade-in-up">
+        <EquityTerminalView />
+      </div>
+    );
+  }
 
   if (activeTab === "watchlist") {
     return (

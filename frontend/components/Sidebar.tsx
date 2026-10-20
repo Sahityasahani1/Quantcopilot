@@ -48,6 +48,13 @@ export const Sidebar: React.FC = () => {
       title: "MARKETS & EXECUTION",
       items: [
         { 
+          id: "equity_terminal", 
+          label: "Equity Terminal (Synced)", 
+          icon: <CandlestickChart className="h-4 w-4 text-[#159570]" />,
+          badge: "SYNC",
+          badgeVariant: "emerald"
+        },
+        { 
           id: "fno_terminal", 
           label: "F&O Options Terminal", 
           icon: <CandlestickChart className="h-4 w-4" /> 
