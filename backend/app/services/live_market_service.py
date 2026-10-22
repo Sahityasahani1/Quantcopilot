@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
+import pandas as pd
 
 from app.schemas import IndianMarketTickerSchema
 
